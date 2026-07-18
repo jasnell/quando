@@ -276,6 +276,97 @@ export async function getSiteStats(db: D1Database): Promise<SiteStats> {
   };
 }
 
+// --- Account (GDPR) ---
+
+export async function deleteAllUserData(db: D1Database, githubId: string): Promise<void> {
+  // Delete all responses this user has made on any poll
+  // (response_values cascade from responses)
+  await db
+    .prepare("DELETE FROM responses WHERE github_id = ?")
+    .bind(githubId)
+    .run();
+
+  // Delete all polls this user created
+  // (slots, responses, response_values cascade from polls)
+  await db
+    .prepare("DELETE FROM polls WHERE creator_github_id = ?")
+    .bind(githubId)
+    .run();
+}
+
+export async function exportUserData(
+  db: D1Database,
+  githubId: string
+): Promise<{
+  user: { github_id: string; github_login: string };
+  polls: (Poll & { slots: Slot[] })[];
+  responses: { poll_id: string; poll_title: string; values: { date: string; start_time: string | null; value: string }[] }[];
+}> {
+  // Get user's login from any record
+  const anyPoll = await db
+    .prepare("SELECT creator_login FROM polls WHERE creator_github_id = ? LIMIT 1")
+    .bind(githubId)
+    .first<{ creator_login: string }>();
+  const anyResponse = await db
+    .prepare("SELECT github_login FROM responses WHERE github_id = ? LIMIT 1")
+    .bind(githubId)
+    .first<{ github_login: string }>();
+  const login = anyPoll?.creator_login ?? anyResponse?.github_login ?? "";
+
+  // Get all polls created by user
+  const { results: polls } = await db
+    .prepare("SELECT * FROM polls WHERE creator_github_id = ? ORDER BY created_at")
+    .bind(githubId)
+    .all<Poll>();
+
+  // Get slots for each poll
+  const pollsWithSlots: (Poll & { slots: Slot[] })[] = [];
+  for (const poll of polls) {
+    const { results: slots } = await db
+      .prepare("SELECT * FROM slots WHERE poll_id = ? ORDER BY position")
+      .bind(poll.id)
+      .all<Slot>();
+    pollsWithSlots.push({ ...poll, slots });
+  }
+
+  // Get all responses this user has made
+  const { results: userResponses } = await db
+    .prepare(
+      `SELECT r.poll_id, p.title as poll_title, r.id as response_id
+       FROM responses r
+       JOIN polls p ON p.id = r.poll_id
+       WHERE r.github_id = ?
+       ORDER BY r.created_at`
+    )
+    .bind(githubId)
+    .all<{ poll_id: string; poll_title: string; response_id: number }>();
+
+  const responsesExport: { poll_id: string; poll_title: string; values: { date: string; start_time: string | null; value: string }[] }[] = [];
+  for (const resp of userResponses) {
+    const { results: values } = await db
+      .prepare(
+        `SELECT s.date, s.start_time, rv.value
+         FROM response_values rv
+         JOIN slots s ON s.id = rv.slot_id
+         WHERE rv.response_id = ?
+         ORDER BY s.position`
+      )
+      .bind(resp.response_id)
+      .all<{ date: string; start_time: string | null; value: string }>();
+    responsesExport.push({
+      poll_id: resp.poll_id,
+      poll_title: resp.poll_title,
+      values,
+    });
+  }
+
+  return {
+    user: { github_id: githubId, github_login: login },
+    polls: pollsWithSlots,
+    responses: responsesExport,
+  };
+}
+
 // --- Slots ---
 
 export async function getSlots(db: D1Database, pollId: string): Promise<Slot[]> {

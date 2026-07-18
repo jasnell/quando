@@ -21,9 +21,14 @@ export const Landing: FC<LandingProps> = ({ session, stats }) => {
             Create a poll
           </a>
         ) : (
-          <a href="/auth/login" class="btn btn-lg">
-            Sign in with GitHub
-          </a>
+          <>
+            <a href="/auth/login" class="btn btn-lg">
+              Sign in with GitHub
+            </a>
+            <p class="consent-notice">
+              By signing in, you agree to our <a href="/privacy">privacy policy</a>.
+            </p>
+          </>
         )}
       </div>
       <div class="features">

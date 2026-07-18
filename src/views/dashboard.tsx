@@ -5,13 +5,14 @@ import { Stats } from "./stats";
 
 interface DashboardProps {
   session: Session;
+  csrfToken: string;
   polls: Poll[];
   stats: SiteStats;
 }
 
-export const Dashboard: FC<DashboardProps> = ({ session, polls, stats }) => {
+export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, stats }) => {
   return (
-    <Layout title="My polls" session={session}>
+    <Layout title="My polls" session={session} csrfToken={csrfToken}>
       <div class="page-header">
         <h1>My polls</h1>
         <a href="/new" class="btn">
@@ -56,6 +57,29 @@ export const Dashboard: FC<DashboardProps> = ({ session, polls, stats }) => {
       )}
 
       <Stats stats={stats} />
+
+      <div class="account-section">
+        <h2>Your data</h2>
+        <p class="muted">
+          Quando stores your GitHub username, the polls you create, and the
+          responses you submit. See our <a href="/privacy">privacy policy</a>.
+        </p>
+        <div class="account-actions">
+          <a href="/account/export" class="btn btn-sm btn-outline">
+            Download my data
+          </a>
+          <form method="post" action="/account/delete" class="inline-form">
+            <input type="hidden" name="_csrf" value={csrfToken} />
+            <button
+              type="submit"
+              class="btn btn-sm btn-danger"
+              data-confirm="Delete all your data? This will remove all your polls and responses permanently. This cannot be undone."
+            >
+              Delete all my data
+            </button>
+          </form>
+        </div>
+      </div>
     </Layout>
   );
 };

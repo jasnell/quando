@@ -5,6 +5,7 @@ import { auth } from "./routes/auth";
 import { polls } from "./routes/polls";
 import { dashboard } from "./routes/dashboard";
 import { Landing } from "./views/landing";
+import { Privacy } from "./views/privacy";
 import { getSiteStats } from "./db/queries";
 
 type AppEnv = { Bindings: Env; Variables: { session: Session | null } };
@@ -29,6 +30,7 @@ app.use("*", sessionMiddleware);
 // CSRF validation on all POSTs (except /auth/* which handles its own state)
 app.use("/new", validateCsrf);
 app.use("/p/*", validateCsrf);
+app.use("/account/*", validateCsrf);
 
 // Landing page
 app.get("/", async (c) => {
@@ -38,6 +40,12 @@ app.get("/", async (c) => {
   }
   const stats = await getSiteStats(c.env.DB);
   return c.html(<Landing session={session} stats={stats} />);
+});
+
+// Privacy policy
+app.get("/privacy", (c) => {
+  const session = c.get("session");
+  return c.html(<Privacy session={session} />);
 });
 
 // Mount route groups

@@ -73,7 +73,11 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({ title, session, csr
         <main class="container">{children}</main>
         <footer class="site-footer">
           <div class="container">
-            <p>Quando &mdash; open-source scheduling polls</p>
+            <p>
+              Quando &mdash; open-source scheduling polls
+              {" "}&middot;{" "}
+              <a href="/privacy">Privacy</a>
+            </p>
           </div>
         </footer>
         {scripts?.map((src) => (
