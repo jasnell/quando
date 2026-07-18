@@ -1,0 +1,19 @@
+{
+  "name": "quando",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create quando-db",
+    "db:migrate": "wrangler d1 execute quando-db --file=src/db/schema.sql",
+    "db:migrate:local": "wrangler d1 execute quando-db --local --file=src/db/schema.sql"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260714.0",
+    "wrangler": "^4.0.0"
+  }
+}

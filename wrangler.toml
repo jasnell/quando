@@ -1,0 +1,15 @@
+name = "quando"
+main = "src/index.tsx"
+compatibility_date = "2025-06-01"
+
+[assets]
+directory = "public"
+
+[triggers]
+crons = ["0 3 * * *"]  # Run daily at 3:00 AM UTC
+
+[[d1_databases]]
+binding = "DB"
+database_name = "quando-db"
+database_id = "15113417-6a2a-4225-a68e-3e48bc01bd1b"
+

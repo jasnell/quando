@@ -1,0 +1,257 @@
+import { Hono } from "hono";
+import type { Env, Session } from "../types";
+import { requireAuth } from "../auth";
+import { isPollExpired } from "../utils";
+import * as db from "../db/queries";
+import { PollView } from "../views/poll";
+import { PollNew } from "../views/poll-new";
+import { PollAdmin } from "../views/poll-admin";
+
+type PollEnv = { Bindings: Env; Variables: { session: Session | null; csrfToken: string } };
+
+const polls = new Hono<PollEnv>();
+
+// --- Create poll ---
+
+polls.get("/new", requireAuth, (c) => {
+  const session = c.get("session")!;
+  const csrfToken = c.get("csrfToken");
+  return c.html(<PollNew session={session} csrfToken={csrfToken} />);
+});
+
+polls.post("/new", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const csrfToken = c.get("csrfToken");
+  const form = await c.req.formData();
+
+  // Rate limits
+  const limits = await db.getCreatorLimits(c.env.DB, session.github_id);
+  if (limits.activeCount >= 10) {
+    return c.html(
+      <PollNew session={session} csrfToken={csrfToken} error="You have reached the limit of 10 active polls. Close or delete an existing poll first." />,
+      429
+    );
+  }
+  if (limits.recentCount >= 5) {
+    return c.html(
+      <PollNew session={session} csrfToken={csrfToken} error="You can create at most 5 polls per hour. Please try again later." />,
+      429
+    );
+  }
+
+  const title = (form.get("title") as string | null)?.trim();
+  const description = (form.get("description") as string | null)?.trim() || null;
+  let link: string | null = null;
+  const rawLink = (form.get("link") as string | null)?.trim() || null;
+  if (rawLink && rawLink.length <= 2000) {
+    try {
+      const url = new URL(rawLink);
+      if (url.protocol === "https:" || url.protocol === "http:") {
+        link = rawLink;
+      } else {
+        return c.html(<PollNew session={session} csrfToken={csrfToken} error="Link must be an http or https URL." />, 400);
+      }
+    } catch {
+      return c.html(<PollNew session={session} csrfToken={csrfToken} error="Link must be a valid URL." />, 400);
+    }
+  }
+  const timezone = (form.get("timezone") as string | null)?.trim() ?? "UTC";
+  const pollType = (form.get("poll_type") as string | null) === "date" ? "date" : "datetime";
+  const responsesHidden = form.get("responses_hidden") === "1";
+
+  // Parse duration (only for datetime polls)
+  let duration: number | null = null;
+  if (pollType === "datetime") {
+    const rawDuration = (form.get("duration") as string | null)?.trim();
+    if (rawDuration && rawDuration !== "custom") {
+      duration = parseInt(rawDuration, 10);
+    } else if (rawDuration === "custom") {
+      const customVal = (form.get("custom_duration") as string | null)?.trim();
+      duration = customVal ? parseInt(customVal, 10) : null;
+    }
+    if (duration !== null && (isNaN(duration) || duration < 5 || duration > 480)) {
+      return c.html(<PollNew session={session} csrfToken={csrfToken} error="Duration must be between 5 and 480 minutes." />, 400);
+    }
+  }
+
+  // Validate title
+  if (!title || title.length > 200) {
+    return c.html(<PollNew session={session} csrfToken={csrfToken} error="Title is required (max 200 characters)." />, 400);
+  }
+
+  // Parse slots from form data
+  // Slots are submitted as slot_date[] and slot_time[] arrays
+  const slotDates = form.getAll("slot_date") as string[];
+  const slotTimes = form.getAll("slot_time") as string[];
+
+  if (slotDates.length === 0) {
+    return c.html(<PollNew session={session} csrfToken={csrfToken} error="At least one date must be selected." />, 400);
+  }
+
+  if (slotDates.length > 50) {
+    return c.html(<PollNew session={session} csrfToken={csrfToken} error="Maximum 50 slots allowed." />, 400);
+  }
+
+  // Build slot objects
+  const slots: { date: string; start_time: string | null }[] = [];
+  for (let i = 0; i < slotDates.length; i++) {
+    const date = slotDates[i]!;
+    const time = pollType === "datetime" ? (slotTimes[i] ?? null) : null;
+
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid date: ${date}`} />, 400);
+    }
+
+    // Validate time format (HH:MM) if present
+    if (time && !/^\d{2}:\d{2}$/.test(time)) {
+      return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid time: ${time}`} />, 400);
+    }
+
+    slots.push({ date, start_time: time || null });
+  }
+
+  const pollId = crypto.randomUUID();
+
+  await db.createPoll(
+    c.env.DB,
+    {
+      id: pollId,
+      creator_github_id: session.github_id,
+      creator_login: session.github_login,
+      title,
+      description,
+      link,
+      timezone,
+      poll_type: pollType,
+      duration,
+      responses_hidden: responsesHidden,
+    },
+    slots
+  );
+
+  return c.redirect(`/p/${pollId}`);
+});
+
+// --- View poll ---
+
+polls.get("/p/:id", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const csrfToken = c.get("csrfToken");
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPollWithSlots(c.env.DB, pollId);
+  if (!poll) {
+    return c.text("Poll not found", 404);
+  }
+
+  const responses = await db.getResponses(c.env.DB, pollId);
+  const userResponse = await db.getUserResponse(c.env.DB, pollId, session.github_id);
+
+  return c.html(
+    <PollView session={session} csrfToken={csrfToken} poll={poll} responses={responses} userResponse={userResponse} />
+  );
+});
+
+// --- Respond to poll ---
+
+polls.post("/p/:id/respond", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPollWithSlots(c.env.DB, pollId);
+  if (!poll) {
+    return c.text("Poll not found", 404);
+  }
+
+  if (poll.closed_at) {
+    return c.text("Poll is closed", 400);
+  }
+
+  if (isPollExpired(poll.slots, poll.timezone, poll.duration)) {
+    return c.text("Poll has expired", 400);
+  }
+
+  const form = await c.req.formData();
+  const slotValues: { slot_id: number; value: "yes" | "no" | "maybe" }[] = [];
+
+  for (const slot of poll.slots) {
+    const value = (form.get(`slot_${slot.id}`) as string | null) ?? "no";
+    if (value !== "yes" && value !== "no" && value !== "maybe") {
+      return c.text(`Invalid value for slot ${slot.id}`, 400);
+    }
+    slotValues.push({ slot_id: slot.id, value });
+  }
+
+  await db.upsertResponse(c.env.DB, pollId, session.github_id, session.github_login, slotValues);
+
+  return c.redirect(`/p/${pollId}`);
+});
+
+// --- Admin ---
+
+polls.get("/p/:id/admin", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const csrfToken = c.get("csrfToken");
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPollWithSlots(c.env.DB, pollId);
+  if (!poll) {
+    return c.text("Poll not found", 404);
+  }
+
+  if (poll.creator_github_id !== session.github_id) {
+    return c.text("Forbidden", 403);
+  }
+
+  const responses = await db.getResponses(c.env.DB, pollId);
+
+  return c.html(<PollAdmin session={session} csrfToken={csrfToken} poll={poll} responses={responses} />);
+});
+
+polls.post("/p/:id/close", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPoll(c.env.DB, pollId);
+  if (!poll || poll.creator_github_id !== session.github_id) {
+    return c.text("Forbidden", 403);
+  }
+
+  await db.closePoll(c.env.DB, pollId);
+  return c.redirect(`/p/${pollId}/admin`);
+});
+
+polls.post("/p/:id/choose", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPoll(c.env.DB, pollId);
+  if (!poll || poll.creator_github_id !== session.github_id) {
+    return c.text("Forbidden", 403);
+  }
+
+  const form = await c.req.formData();
+  const slotId = Number(form.get("slot_id"));
+  if (!slotId) {
+    return c.text("Invalid slot", 400);
+  }
+
+  await db.chooseSlot(c.env.DB, pollId, slotId);
+  return c.redirect(`/p/${pollId}/admin`);
+});
+
+polls.post("/p/:id/delete", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPoll(c.env.DB, pollId);
+  if (!poll || poll.creator_github_id !== session.github_id) {
+    return c.text("Forbidden", 403);
+  }
+
+  await db.deletePoll(c.env.DB, pollId);
+  return c.redirect("/dashboard");
+});
+
+export { polls };
