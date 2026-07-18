@@ -15,10 +15,14 @@ Built on [Cloudflare Workers](https://workers.cloudflare.com/) with
 - **Best-slot highlighting** — top slots highlighted automatically
 - **Response comments** — respondents can leave a note with their response
 - **Response deadline** — optionally auto-close polls at a set time
+- **Optional timezone sharing** — respondents can opt-in to share their timezone
 - **Calendar invite** — download .ics file for the chosen time
 - **Table or list view** — respondents toggle between layouts
+- **Keyboard navigation** — arrow keys + Y/N/? hotkeys in both views
 - **Copy as Markdown** — export results for pasting into a GitHub issue
+- **Non-destructive editing** — edit poll metadata and add slots without losing responses
 - **Poll templates** — reuse a poll's settings to create a new one
+- **Social sharing** — Open Graph meta tags for Slack, Google Chat, and other link previews
 - **Dark mode** — automatic (system) or manual toggle
 - **REST API** — full JSON API with token auth
 - **MCP server** — AI assistant integration via Model Context Protocol
@@ -111,6 +115,8 @@ curl -H "Authorization: Bearer quando_..." https://quando.jasnell.workers.dev/ap
 | `GET`    | `/api/polls`             | List your created + responded polls  |
 | `POST`   | `/api/polls`             | Create a poll                        |
 | `GET`    | `/api/polls/:id`         | Get poll with slots and responses    |
+| `PATCH`  | `/api/polls/:id`         | Edit poll metadata (creator only)    |
+| `POST`   | `/api/polls/:id/slots`   | Add new time slots (creator only)    |
 | `POST`   | `/api/polls/:id/respond` | Submit or update your response       |
 | `POST`   | `/api/polls/:id/close`   | Close a poll (creator only)          |
 | `POST`   | `/api/polls/:id/choose`  | Choose the winning slot (creator)    |
@@ -203,6 +209,9 @@ Once configured, you can ask your AI assistant things like:
 - "Which slot has the most yes votes on the team sync? Choose that one and close the poll"
 - "Create a new poll using the same settings as the Q3 planning poll but for next month"
 - "Add a note to my response on the design review poll saying I can only do 30 minutes"
+- "Add Friday at 10am and 2pm to the team sync poll"
+- "Change the title of the Q3 planning poll to Q4 planning"
+- "Set a response deadline for next Monday on the team sync poll"
 
 ### Available tools
 
@@ -211,6 +220,8 @@ Once configured, you can ask your AI assistant things like:
 | `list_polls`       | List polls you created and responded to           |
 | `get_poll`         | Get poll details, slots, responses                |
 | `create_poll`      | Create a new scheduling poll                      |
+| `edit_poll`        | Edit poll metadata (title, description, etc.)     |
+| `add_slots`        | Add new time slots to an existing poll            |
 | `respond_to_poll`  | Submit yes/no/maybe for each slot                 |
 | `close_poll`       | Close a poll (stops accepting responses)          |
 | `choose_slot`      | Mark the winning time slot                        |
@@ -237,6 +248,7 @@ src/
     ├── layout.tsx       # HTML shell, theme toggle
     ├── landing.tsx      # Home page
     ├── poll-new.tsx     # Create poll form (+ template support)
+    ├── poll-edit.tsx    # Edit poll form (metadata + add slots)
     ├── poll.tsx         # Poll view + response form
     ├── poll-admin.tsx   # Admin controls
     ├── dashboard.tsx    # Poll list, API tokens, data export
@@ -244,8 +256,9 @@ src/
 public/
 ├── style.css            # Stylesheet (light + dark mode)
 ├── favicon.svg          # Logo
+├── og-image.png         # Open Graph social sharing image
 ├── poll-create.js       # Calendar picker, timezone selector
-└── poll-respond.js      # Response toggling, view toggle, tz conversion
+└── poll-respond.js      # Response toggling, view toggle, keyboard nav
 mcp/
 └── server.mjs           # MCP server (stdio, wraps REST API)
 ```
