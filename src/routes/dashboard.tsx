@@ -1,8 +1,11 @@
 import { Hono } from "hono";
+import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { Env, Session } from "../types";
 import { requireAuth, clearSession } from "../auth";
 import * as db from "../db/queries";
 import { Dashboard } from "../views/dashboard";
+
+const NEW_TOKEN_COOKIE = "quando_new_token";
 
 type DashEnv = { Bindings: Env; Variables: { session: Session | null; csrfToken: string; cspNonce: string } };
 
@@ -18,7 +21,11 @@ dashboard.get("/dashboard", requireAuth, async (c) => {
     db.getSiteStats(c.env.DB),
     db.listApiTokens(c.env.DB, session.github_id),
   ]);
-  const newToken = c.req.query("new_token") ?? undefined;
+  // Read flash token from cookie (one-time display, then delete)
+  const newToken = getCookie(c, NEW_TOKEN_COOKIE) ?? undefined;
+  if (newToken) {
+    deleteCookie(c, NEW_TOKEN_COOKIE, { path: "/" });
+  }
   return c.html(<Dashboard session={session} csrfToken={csrfToken} polls={polls} respondedPolls={respondedPolls} stats={stats} apiTokens={apiTokens} newToken={newToken} cspNonce={cspNonce} />);
 });
 
@@ -46,7 +53,16 @@ dashboard.post("/api-tokens/create", requireAuth, async (c) => {
   }
 
   const token = await db.createApiToken(c.env.DB, session.github_id, session.github_login, name.slice(0, 100), expiresAt);
-  return c.redirect(`/dashboard?new_token=${encodeURIComponent(token)}`);
+
+  // Flash token via short-lived httpOnly cookie — never in the URL
+  setCookie(c, NEW_TOKEN_COOKIE, token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "Strict",
+    path: "/",
+    maxAge: 60, // 1 minute — just long enough for the redirect
+  });
+  return c.redirect("/dashboard");
 });
 
 dashboard.post("/api-tokens/:id/revoke", requireAuth, async (c) => {
