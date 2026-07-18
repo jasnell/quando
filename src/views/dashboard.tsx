@@ -63,7 +63,7 @@ export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respo
 
       {respondedPolls.length > 0 && (
         <>
-          <div class="page-header" style="padding-top: 1rem">
+           <div class="page-header pt-1">
             <h2>Polls I've responded to</h2>
           </div>
           <div class="poll-list">
@@ -133,7 +133,7 @@ export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respo
                   </div>
                   <form method="post" action={`/api-tokens/${t.id}/revoke`} class="inline-form">
                     <input type="hidden" name="_csrf" value={csrfToken} />
-                    <button type="submit" class="btn-link" style="color: var(--error)" data-confirm="Revoke this API token? Any tools using it will stop working.">
+                    <button type="submit" class="btn-link text-error" data-confirm="Revoke this API token? Any tools using it will stop working.">
                       Revoke
                     </button>
                   </form>
@@ -145,8 +145,8 @@ export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respo
 
         <form method="post" action="/api-tokens/create" class="token-create-form">
           <input type="hidden" name="_csrf" value={csrfToken} />
-          <input type="text" name="token_name" placeholder="Token name (e.g. MCP)" class="input" style="max-width: 14rem" maxLength={100} required />
-          <select name="token_expiry" class="input" style="max-width: 10rem">
+          <input type="text" name="token_name" placeholder="Token name (e.g. MCP)" class="input max-w-sm" maxLength={100} required />
+          <select name="token_expiry" class="input max-w-select">
             <option value="30">30 days</option>
             <option value="60">60 days</option>
             <option value="90" selected>90 days</option>

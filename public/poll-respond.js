@@ -3,12 +3,29 @@
 (function () {
   "use strict";
 
-  // --- Set respondent timezone hidden field ---
+  // --- Timezone opt-in ---
   var tzInput = document.getElementById("respondent-timezone");
-  if (tzInput) {
-    try {
-      tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (e) {}
+  var tzCheckbox = document.getElementById("share-tz-checkbox");
+  var tzNameLabel = document.getElementById("share-tz-name");
+  var detectedTz = "";
+  try {
+    detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch (e) {}
+
+  if (tzNameLabel && detectedTz) {
+    tzNameLabel.textContent = "(" + detectedTz.replace(/_/g, " ") + ")";
+  }
+  if (tzCheckbox && tzInput) {
+    // Set initial value based on checkbox state
+    if (tzCheckbox.checked && detectedTz) {
+      tzInput.value = detectedTz;
+    } else {
+      tzInput.value = "";
+    }
+    // Toggle on change
+    tzCheckbox.addEventListener("change", function () {
+      tzInput.value = this.checked ? detectedTz : "";
+    });
   }
 
   // --- Shared: sync a slot's value across both views ---
@@ -76,10 +93,10 @@
       var lists = document.querySelectorAll(".view-list");
 
       for (var i = 0; i < tables.length; i++) {
-        tables[i].style.display = view === "table" ? "" : "none";
+        if (view === "table") { tables[i].classList.remove("hidden"); } else { tables[i].classList.add("hidden"); }
       }
       for (var i = 0; i < lists.length; i++) {
-        lists[i].style.display = view === "list" ? "" : "none";
+        if (view === "list") { lists[i].classList.remove("hidden"); } else { lists[i].classList.add("hidden"); }
       }
 
       for (var i = 0; i < toggleBtns.length; i++) {

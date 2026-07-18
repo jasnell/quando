@@ -24,7 +24,12 @@ export const Privacy: FC<PrivacyProps> = ({ session, cspNonce }) => {
           When you use Quando, we store the <strong>polls you create</strong>{" "}
           (title, description, link, timezone, dates, times, duration) and the{" "}
           <strong>responses you submit</strong> on other users' polls (your
-          yes/maybe/no selections).
+          yes/maybe/no selections and optional comment). If you choose to share
+          your timezone when responding to a poll, your <strong>IANA timezone
+          identifier</strong> (e.g. "America/New_York") is stored with your
+          response and visible to other poll participants. This is entirely
+          opt-in — a checkbox on the response form must be checked before your
+          timezone is shared.
         </p>
 
         <h2>Why we collect it</h2>

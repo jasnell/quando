@@ -473,9 +473,12 @@ select.input {
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   cursor: pointer;
   font-size: 0.875rem;
+}
+.checkbox-label input[type="checkbox"] {
+  margin: 0 0.5rem 0 0;
+  flex-shrink: 0;
 }
 .tz-select-wrapper {
   display: flex;
@@ -1454,6 +1457,30 @@ thead .name-col {
 }
 
 /* --- Utilities --- */
+.hidden {
+  display: none;
+}
+.d-flex {
+  display: flex;
+}
+.mt-1 {
+  margin-top: 1rem;
+}
+.pt-1 {
+  padding-top: 1rem;
+}
+.max-w-sm {
+  max-width: 14rem;
+}
+.max-w-md {
+  max-width: 18rem;
+}
+.max-w-select {
+  max-width: 10rem;
+}
+.text-error {
+  color: var(--error);
+}
 .sr-only {
   position: absolute;
   width: 1px;

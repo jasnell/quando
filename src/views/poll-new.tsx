@@ -134,7 +134,7 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce,
               <option value="120">2 hours</option>
               <option value="custom">Custom...</option>
             </select>
-            <div id="custom-duration" class="custom-duration" style="display:none">
+            <div id="custom-duration" class="custom-duration hidden">
               <input
                 type="number"
                 id="custom-duration-input"
@@ -157,7 +157,7 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce,
               <p>JavaScript is required to use the date picker.</p>
             </noscript>
           </div>
-          <div id="weekday-container" class="weekday-container" style="display:none">
+          <div id="weekday-container" class="weekday-container hidden">
             {/* Weekday picker rendered by client-side JS */}
           </div>
         </div>
@@ -189,7 +189,7 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce,
 
         <div class="form-group">
           <label for="closes_at">Response deadline <small>(optional)</small></label>
-          <input type="datetime-local" name="closes_at" id="closes_at" class="input" style="max-width: 18rem" />
+          <input type="datetime-local" name="closes_at" id="closes_at" class="input max-w-md" />
           <small class="muted">Poll will stop accepting responses after this time.</small>
         </div>
 

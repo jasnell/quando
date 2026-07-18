@@ -255,7 +255,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
 
       {/* Results — list view */}
       {canSeeResponses && responses.length > 0 && (
-        <div class="results-section view-list" style="display:none">
+        <div class="results-section view-list hidden">
           <h2>Responses ({responses.length})</h2>
           <div class="slot-card-list">
             {poll.slots.map((slot) => {
@@ -312,7 +312,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
           <h2>{userResponse ? `Your response (@${session.github_login})` : `Respond (@${session.github_login})`}</h2>
           <form method="post" action={`/p/${poll.id}/respond`} id="respond-form">
             <input type="hidden" name="_csrf" value={csrfToken} />
-            <input type="hidden" name="respondent_timezone" id="respondent-timezone" value="" />
+            <input type="hidden" name="respondent_timezone" id="respondent-timezone" value={userResponse?.timezone ?? ""} />
             {/* Table view */}
             <div class="view-table">
               <div class="grid-scroll">
@@ -359,7 +359,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
             </div>
 
             {/* List view */}
-            <div class="view-list" style="display:none">
+            <div class="view-list hidden">
               <div class="respond-card-list">
                 {poll.slots.map((slot) => {
                   const currentVal = userResponse?.values[slot.id] ?? "no";
@@ -410,9 +410,16 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
               </div>
             </div>
 
-            <div class="form-group" style="margin-top: 1rem">
+            <div class="form-group mt-1">
               <label for="comment">Note <small>(optional, max 500 chars)</small></label>
               <textarea name="comment" id="comment" class="input" rows={2} maxLength={500} placeholder="e.g. &quot;Only available after 10am&quot;">{userResponse?.comment ?? ""}</textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-label" id="share-tz-label">
+                <input type="checkbox" id="share-tz-checkbox" checked={!!userResponse?.timezone} />
+                <span>Share my timezone <small class="muted" id="share-tz-name"></small></span>
+              </label>
             </div>
 
             <div class="form-actions">

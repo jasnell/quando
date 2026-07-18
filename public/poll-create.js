@@ -78,10 +78,10 @@
         state.pollType = this.value;
         var isDatetime = this.value === "datetime";
         if (defaultTimeGroup) {
-          defaultTimeGroup.style.display = isDatetime ? "" : "none";
+          if (isDatetime) { defaultTimeGroup.classList.remove("hidden"); } else { defaultTimeGroup.classList.add("hidden"); }
         }
         if (durationGroup) {
-          durationGroup.style.display = isDatetime ? "" : "none";
+          if (isDatetime) { durationGroup.classList.remove("hidden"); } else { durationGroup.classList.add("hidden"); }
         }
         // Clear all times if switching to date-only
         if (this.value === "date") {
@@ -112,12 +112,12 @@
         state.selectedSlots.clear();
 
         if (this.value === "weekly") {
-          calendarContainer.style.display = "none";
-          if (weekdayContainer) weekdayContainer.style.display = "";
+          calendarContainer.classList.add("hidden");
+          if (weekdayContainer) weekdayContainer.classList.remove("hidden");
           renderWeekdayPicker();
         } else {
-          calendarContainer.style.display = "";
-          if (weekdayContainer) weekdayContainer.style.display = "none";
+          calendarContainer.classList.remove("hidden");
+          if (weekdayContainer) weekdayContainer.classList.add("hidden");
           renderCalendar();
         }
         renderSelectedSlots();
@@ -485,7 +485,7 @@
 
     durationSelect.addEventListener("change", function () {
       if (customDurationDiv) {
-        customDurationDiv.style.display = this.value === "custom" ? "flex" : "none";
+        if (this.value === "custom") { customDurationDiv.classList.remove("hidden"); customDurationDiv.classList.add("d-flex"); } else { customDurationDiv.classList.add("hidden"); customDurationDiv.classList.remove("d-flex"); }
       }
       // Sync a hidden input for the custom value
       if (this.value === "custom" && customDurationInput) {
@@ -526,8 +526,8 @@
         modeRadio.checked = true;
         state.scheduleMode = tpl.schedule_mode;
         if (tpl.schedule_mode === "weekly") {
-          calendarContainer.style.display = "none";
-          if (weekdayContainer) weekdayContainer.style.display = "";
+          calendarContainer.classList.add("hidden");
+          if (weekdayContainer) weekdayContainer.classList.remove("hidden");
         }
       }
     }
@@ -539,8 +539,8 @@
         typeRadio.checked = true;
         state.pollType = tpl.poll_type;
         if (tpl.poll_type === "date") {
-          if (defaultTimeGroup) defaultTimeGroup.style.display = "none";
-          if (durationGroup) durationGroup.style.display = "none";
+          if (defaultTimeGroup) defaultTimeGroup.classList.add("hidden");
+          if (durationGroup) durationGroup.classList.add("hidden");
         }
       }
     }
@@ -557,7 +557,7 @@
       }
       if (!found) {
         durationSelect.value = "custom";
-        if (customDurationDiv) customDurationDiv.style.display = "flex";
+        if (customDurationDiv) { customDurationDiv.classList.remove("hidden"); customDurationDiv.classList.add("d-flex"); }
         if (customDurationInput) {
           customDurationInput.value = tpl.duration;
           customDurationInput.name = "custom_duration";
