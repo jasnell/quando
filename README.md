@@ -174,6 +174,18 @@ Quando includes an [MCP](https://modelcontextprotocol.io/) server for AI assista
 }
 ```
 
+### Example prompts
+
+Once configured, you can ask your AI assistant things like:
+
+- "Create a poll for our team sync next week — offer Tuesday, Wednesday, and Thursday at 10am and 2pm EST"
+- "What polls do I have open?"
+- "Show me the responses for the Q3 planning poll"
+- "Mark me as yes for the morning slots and maybe for the afternoon ones on the team sync poll"
+- "Which slot has the most yes votes on the team sync? Choose that one and close the poll"
+- "Create a new poll using the same settings as the Q3 planning poll but for next month"
+- "Add a note to my response on the design review poll saying I can only do 30 minutes"
+
 ### Available tools
 
 | Tool               | Description                                      |
