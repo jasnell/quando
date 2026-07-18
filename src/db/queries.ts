@@ -16,6 +16,7 @@ export async function createPoll(
     poll_type: "date" | "datetime";
     duration: number | null;
     responses_hidden: boolean;
+    closes_at: string | null;
   },
   slots: { date: string; start_time: string | null }[]
 ): Promise<void> {
@@ -24,8 +25,8 @@ export async function createPoll(
   stmts.push(
     db
       .prepare(
-        `INSERT INTO polls (id, creator_github_id, creator_login, title, description, link, timezone, schedule_mode, poll_type, duration, responses_hidden)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO polls (id, creator_github_id, creator_login, title, description, link, timezone, schedule_mode, poll_type, duration, responses_hidden, closes_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         poll.id,
@@ -38,7 +39,8 @@ export async function createPoll(
         poll.schedule_mode,
         poll.poll_type,
         poll.duration,
-        poll.responses_hidden ? 1 : 0
+        poll.responses_hidden ? 1 : 0,
+        poll.closes_at
       )
   );
 
@@ -187,7 +189,8 @@ export async function upsertResponse(
   pollId: string,
   githubId: string,
   githubLogin: string,
-  slotValues: { slot_id: number; value: "yes" | "no" | "maybe" }[]
+  slotValues: { slot_id: number; value: "yes" | "no" | "maybe" }[],
+  comment: string | null
 ): Promise<void> {
   // Check for existing response
   const existing = await db
@@ -204,8 +207,8 @@ export async function upsertResponse(
     // Update timestamp
     stmts.push(
       db
-        .prepare("UPDATE responses SET github_login = ?, updated_at = datetime('now') WHERE id = ?")
-        .bind(githubLogin, responseId)
+        .prepare("UPDATE responses SET github_login = ?, comment = ?, updated_at = datetime('now') WHERE id = ?")
+        .bind(githubLogin, comment, responseId)
     );
     // Delete old values
     stmts.push(db.prepare("DELETE FROM response_values WHERE response_id = ?").bind(responseId));
@@ -213,9 +216,9 @@ export async function upsertResponse(
     // We need to insert and get the ID back - do this outside the batch
     const result = await db
       .prepare(
-        "INSERT INTO responses (poll_id, github_id, github_login) VALUES (?, ?, ?) RETURNING id"
-      )
-      .bind(pollId, githubId, githubLogin)
+        "INSERT INTO responses (poll_id, github_id, github_login, comment) VALUES (?, ?, ?, ?) RETURNING id"
+       )
+      .bind(pollId, githubId, githubLogin, comment)
       .first<{ id: number }>();
     responseId = result!.id;
   }
@@ -302,7 +305,7 @@ export async function exportUserData(
 ): Promise<{
   user: { github_id: string; github_login: string };
   polls: (Poll & { slots: Slot[] })[];
-  responses: { poll_id: string; poll_title: string; values: { date: string; start_time: string | null; value: string }[] }[];
+  responses: { poll_id: string; poll_title: string; comment: string | null; values: { date: string; start_time: string | null; value: string }[] }[];
 }> {
   // Get user's login from any record
   const anyPoll = await db
@@ -334,16 +337,16 @@ export async function exportUserData(
   // Get all responses this user has made
   const { results: userResponses } = await db
     .prepare(
-      `SELECT r.poll_id, p.title as poll_title, r.id as response_id
+      `SELECT r.poll_id, p.title as poll_title, r.id as response_id, r.comment
        FROM responses r
        JOIN polls p ON p.id = r.poll_id
        WHERE r.github_id = ?
        ORDER BY r.created_at`
     )
     .bind(githubId)
-    .all<{ poll_id: string; poll_title: string; response_id: number }>();
+    .all<{ poll_id: string; poll_title: string; response_id: number; comment: string | null }>();
 
-  const responsesExport: { poll_id: string; poll_title: string; values: { date: string; start_time: string | null; value: string }[] }[] = [];
+  const responsesExport: { poll_id: string; poll_title: string; comment: string | null; values: { date: string; start_time: string | null; value: string }[] }[] = [];
   for (const resp of userResponses) {
     const { results: values } = await db
       .prepare(
@@ -358,6 +361,7 @@ export async function exportUserData(
     responsesExport.push({
       poll_id: resp.poll_id,
       poll_title: resp.poll_title,
+      comment: resp.comment,
       values,
     });
   }

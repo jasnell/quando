@@ -61,6 +61,22 @@ export const PollAdmin: FC<PollAdminProps> = ({ session, csrfToken, poll, respon
           {isClosed && <span class="badge badge-closed">Closed</span>}
           {poll.chosen_slot && <span class="badge badge-chosen">Time chosen</span>}
         </p>
+        {poll.closes_at && (
+          <p class="poll-deadline">
+            Response deadline:{" "}
+            <strong>
+              {new Date(poll.closes_at).toLocaleString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: poll.timezone,
+                timeZoneName: "short",
+              })}
+            </strong>
+          </p>
+        )}
       </div>
 
       {/* Response summary - creator always sees all responses */}

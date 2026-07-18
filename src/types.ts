@@ -30,6 +30,7 @@ export interface Poll {
   responses_hidden: number;
   chosen_slot: number | null;
   closed_at: string | null;
+  closes_at: string | null;
   created_at: string;
 }
 
@@ -46,6 +47,7 @@ export interface Response {
   poll_id: string;
   github_id: string;
   github_login: string;
+  comment: string | null;
   created_at: string;
   updated_at: string;
 }

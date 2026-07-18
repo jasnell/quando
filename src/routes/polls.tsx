@@ -62,6 +62,21 @@ polls.post("/new", requireAuth, async (c) => {
   const pollType = (form.get("poll_type") as string | null) === "date" ? "date" : "datetime";
   const responsesHidden = form.get("responses_hidden") === "1";
 
+  // Parse response deadline
+  let closesAt: string | null = null;
+  const rawClosesAt = (form.get("closes_at") as string | null)?.trim() || null;
+  if (rawClosesAt) {
+    // Validate it's a reasonable datetime
+    const closesDate = new Date(rawClosesAt);
+    if (isNaN(closesDate.getTime())) {
+      return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="Invalid deadline date." />, 400);
+    }
+    if (closesDate.getTime() < Date.now()) {
+      return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="Deadline must be in the future." />, 400);
+    }
+    closesAt = closesDate.toISOString();
+  }
+
   // Parse duration (only for datetime polls)
   let duration: number | null = null;
   if (pollType === "datetime") {
@@ -137,6 +152,7 @@ polls.post("/new", requireAuth, async (c) => {
       poll_type: pollType,
       duration,
       responses_hidden: responsesHidden,
+      closes_at: closesAt,
     },
     slots
   );
@@ -184,6 +200,10 @@ polls.post("/p/:id/respond", requireAuth, async (c) => {
     return c.text("Poll has expired", 400);
   }
 
+  if (poll.closes_at && new Date(poll.closes_at).getTime() <= Date.now()) {
+    return c.text("Response deadline has passed", 400);
+  }
+
   const form = await c.req.formData();
   const slotValues: { slot_id: number; value: "yes" | "no" | "maybe" }[] = [];
 
@@ -195,7 +215,11 @@ polls.post("/p/:id/respond", requireAuth, async (c) => {
     slotValues.push({ slot_id: slot.id, value });
   }
 
-  await db.upsertResponse(c.env.DB, pollId, session.github_id, session.github_login, slotValues);
+  let comment = (form.get("comment") as string | null)?.trim() || null;
+  if (comment && comment.length > 500) {
+    comment = comment.slice(0, 500);
+  }
+  await db.upsertResponse(c.env.DB, pollId, session.github_id, session.github_login, slotValues, comment);
 
   return c.redirect(`/p/${pollId}`);
 });

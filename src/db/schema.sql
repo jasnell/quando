@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS polls (
   responses_hidden  INTEGER NOT NULL DEFAULT 0,
   chosen_slot       INTEGER REFERENCES slots(id),
   closed_at         TEXT,
+  closes_at         TEXT,
   created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS responses (
   poll_id      TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
   github_id    TEXT NOT NULL,
   github_login TEXT NOT NULL,
+  comment      TEXT,
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

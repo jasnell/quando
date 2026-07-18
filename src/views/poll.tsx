@@ -58,6 +58,16 @@ function generateMarkdown(poll: PollWithSlots, responses: ResponseWithValues[]):
   );
   lines.push(`| **Yes** | ${totals.join(" | ")} |`);
 
+  // Add notes section if any comments exist
+  const commented = responses.filter((r) => r.comment);
+  if (commented.length > 0) {
+    lines.push("");
+    lines.push("**Notes:**");
+    for (const r of commented) {
+      lines.push(`- @${r.github_login}: ${r.comment}`);
+    }
+  }
+
   lines.push("");
   lines.push(`*${responses.length} response${responses.length !== 1 ? "s" : ""} · [View poll]()*`);
 
@@ -77,10 +87,12 @@ const ValueIcon: FC<{ value: string }> = ({ value }) => {
 export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, responses, userResponse, cspNonce }) => {
   const isClosed = poll.closed_at !== null;
   const isExpired = isPollExpired(poll.slots, poll.timezone, poll.duration, poll.schedule_mode);
-  const acceptingResponses = !isClosed && !isExpired;
+  const isDeadlinePassed = poll.closes_at ? new Date(poll.closes_at).getTime() <= Date.now() : false;
+  const acceptingResponses = !isClosed && !isExpired && !isDeadlinePassed;
   const isCreator = session.github_id === poll.creator_github_id;
   const canSeeResponses = !poll.responses_hidden || isCreator || isClosed;
   const chosenSlot = poll.chosen_slot;
+  const hasComments = responses.some((r) => r.comment);
 
   // Compute totals
   const totals: Record<number, number> = {};
@@ -114,11 +126,28 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
           )}
           {isClosed && <span class="badge badge-closed">Closed</span>}
           {!isClosed && isExpired && <span class="badge badge-expired">Expired</span>}
+          {!isClosed && !isExpired && isDeadlinePassed && <span class="badge badge-expired">Deadline passed</span>}
         </p>
         {poll.description && <p class="poll-description">{poll.description}</p>}
         {poll.link && (
           <p class="poll-link">
             <a href={poll.link} target="_blank" rel="noopener noreferrer ugc">{poll.link}</a>
+          </p>
+        )}
+        {poll.closes_at && !isClosed && (
+          <p class="poll-deadline">
+            Responses due by{" "}
+            <strong>
+              {new Date(poll.closes_at).toLocaleString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: poll.timezone,
+                timeZoneName: "short",
+              })}
+            </strong>
           </p>
         )}
         {chosenSlot && (
@@ -188,9 +217,10 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
               </thead>
               <tbody>
                 {responses.map((r) => (
-                  <tr>
+                   <tr>
                     <td class="name-col">
                       <span class="respondent-name">@{r.github_login}</span>
+                      {r.comment && <div class="respondent-comment" title={r.comment}>{r.comment}</div>}
                     </td>
                     {poll.slots.map((slot) => {
                       const val = r.values[slot.id] ?? "no";
@@ -250,7 +280,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                     {responses.map((r) => {
                       const val = r.values[slot.id] ?? "no";
                       return (
-                        <span class={`respondent-chip value-${val}`}>
+                        <span class={`respondent-chip value-${val}`} title={r.comment ?? undefined}>
                           <ValueIcon value={val} />{" "}
                           @{r.github_login}
                         </span>
@@ -374,6 +404,11 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                   );
                 })}
               </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem">
+              <label for="comment">Note <small>(optional, max 500 chars)</small></label>
+              <textarea name="comment" id="comment" class="input" rows={2} maxLength={500} placeholder="e.g. &quot;Only available after 10am&quot;">{userResponse?.comment ?? ""}</textarea>
             </div>
 
             <div class="form-actions">

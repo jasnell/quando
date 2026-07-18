@@ -61,6 +61,11 @@ app.route("/", dashboard);
 export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+    // Auto-close polls whose response deadline has passed
+    await env.DB.prepare(
+      "UPDATE polls SET closed_at = datetime('now') WHERE closed_at IS NULL AND closes_at IS NOT NULL AND closes_at <= datetime('now')"
+    ).run();
+
     // Delete closed polls older than 90 days
     await env.DB.prepare(
       "DELETE FROM polls WHERE closed_at IS NOT NULL AND closed_at < datetime('now', '-90 days')"

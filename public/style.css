@@ -804,6 +804,21 @@ select.input {
   margin-left: auto;
   font-size: 0.8125rem;
 }
+.poll-deadline {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+.respondent-comment {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  font-style: italic;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* --- Poll toolbar --- */
 .poll-toolbar {

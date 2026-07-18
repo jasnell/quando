@@ -172,6 +172,12 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce 
           </label>
         </div>
 
+        <div class="form-group">
+          <label for="closes_at">Response deadline <small>(optional)</small></label>
+          <input type="datetime-local" name="closes_at" id="closes_at" class="input" style="max-width: 18rem" />
+          <small class="muted">Poll will stop accepting responses after this time.</small>
+        </div>
+
         <div class="form-actions">
           <button type="submit" class="btn btn-lg" id="create-btn" disabled>
             Create poll
