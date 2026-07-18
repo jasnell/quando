@@ -42,23 +42,25 @@ function generateMarkdown(poll: PollWithSlots, responses: ResponseWithValues[]):
 
   // Build markdown table
   const headers = poll.slots.map((s) => formatSlotHeader(s.date, s.start_time, poll.timezone, poll.duration));
+  const hasTz = responses.some((r) => r.timezone);
 
-  lines.push(`| | ${headers.join(" | ")} |`);
-  lines.push(`|---|${headers.map(() => "---").join("|")}|`);
+  lines.push(`| | ${hasTz ? "TZ | " : ""}${headers.join(" | ")} |`);
+  lines.push(`|---|${hasTz ? "---|" : ""}${headers.map(() => "---").join("|")}|`);
 
   for (const r of responses) {
     const cells = poll.slots.map((slot) => {
       const val = r.values[slot.id] ?? "no";
       return val === "yes" ? "\u2705" : val === "maybe" ? "\u2753" : "\u274c";
     });
-    lines.push(`| @${r.github_login} | ${cells.join(" | ")} |`);
+    const tz = hasTz ? (r.timezone ? r.timezone.replace(/_/g, " ") : "") + " | " : "";
+    lines.push(`| @${r.github_login} | ${tz}${cells.join(" | ")} |`);
   }
 
   // Totals row
   const totals = poll.slots.map((slot) =>
     String(responses.filter((r) => r.values[slot.id] === "yes").length)
   );
-  lines.push(`| **Yes** | ${totals.join(" | ")} |`);
+  lines.push(`| **Yes** | ${hasTz ? " | " : ""}${totals.join(" | ")} |`);
 
   // Add notes section if any comments exist
   const commented = responses.filter((r) => r.comment);
