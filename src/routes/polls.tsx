@@ -4,6 +4,7 @@ import { requireAuth } from "../auth";
 import { isPollExpired, generateICS } from "../utils";
 import * as db from "../db/queries";
 import { PollView } from "../views/poll";
+import type { OgMeta } from "../views/layout";
 import { PollNew } from "../views/poll-new";
 import { PollAdmin } from "../views/poll-admin";
 
@@ -184,8 +185,26 @@ polls.get("/p/:id", requireAuth, async (c) => {
   const responses = await db.getResponses(c.env.DB, pollId);
   const userResponse = await db.getUserResponse(c.env.DB, pollId, session.github_id);
 
+  // Build OG metadata for social sharing
+  const isClosed = poll.closed_at !== null;
+  const slotCount = poll.slots.length;
+  const respCount = responses.length;
+  const status = isClosed ? "Closed" : "Open";
+  const parts: string[] = [];
+  if (poll.description) {
+    parts.push(poll.description.length > 120 ? poll.description.slice(0, 117) + "..." : poll.description);
+  }
+  parts.push(`${slotCount} time slot${slotCount !== 1 ? "s" : ""} · ${respCount} response${respCount !== 1 ? "s" : ""} · ${status}`);
+  const reqUrl = new URL(c.req.url);
+  const ogMeta: OgMeta = {
+    title: poll.title,
+    description: parts.join(" — "),
+    url: `${reqUrl.origin}/p/${poll.id}`,
+    image: `${reqUrl.origin}/og-image.png`,
+  };
+
   return c.html(
-    <PollView session={session} csrfToken={csrfToken} poll={poll} responses={responses} userResponse={userResponse} cspNonce={cspNonce} />
+    <PollView session={session} csrfToken={csrfToken} poll={poll} responses={responses} userResponse={userResponse} cspNonce={cspNonce} ogMeta={ogMeta} />
   );
 });
 

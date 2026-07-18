@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import { Layout } from "./layout";
+import type { OgMeta } from "./layout";
 import type { Session, SiteStats } from "../types";
 import { Stats } from "./stats";
 
@@ -7,11 +8,12 @@ interface LandingProps {
   session: Session | null;
   stats: SiteStats;
   cspNonce?: string;
+  ogMeta?: OgMeta;
 }
 
-export const Landing: FC<LandingProps> = ({ session, stats, cspNonce }) => {
+export const Landing: FC<LandingProps> = ({ session, stats, cspNonce, ogMeta }) => {
   return (
-    <Layout session={session} cspNonce={cspNonce}>
+    <Layout session={session} cspNonce={cspNonce} ogMeta={ogMeta}>
       <div class="hero">
         <h1>Find a time that works for everyone.</h1>
         <p class="hero-sub">

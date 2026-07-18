@@ -58,7 +58,14 @@ app.get("/", async (c) => {
     return c.redirect("/dashboard");
   }
   const stats = await getSiteStats(c.env.DB);
-  return c.html(<Landing session={session} stats={stats} cspNonce={c.get("cspNonce")} />);
+  const reqUrl = new URL(c.req.url);
+  const ogMeta = {
+    title: "Quando — Find a time that works for everyone",
+    description: "Create a scheduling poll, share the link, see who's free. Open-source, timezone-aware, no fuss.",
+    url: reqUrl.origin,
+    image: `${reqUrl.origin}/og-image.png`,
+  };
+  return c.html(<Landing session={session} stats={stats} cspNonce={c.get("cspNonce")} ogMeta={ogMeta} />);
 });
 
 // Privacy policy

@@ -1,15 +1,23 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { Session } from "../types";
 
+export interface OgMeta {
+  title: string;
+  description: string;
+  url: string;
+  image?: string;
+}
+
 interface LayoutProps {
   title?: string;
   session: Session | null;
   csrfToken?: string;
   cspNonce?: string;
   scripts?: string[];
+  ogMeta?: OgMeta;
 }
 
-export const Layout: FC<PropsWithChildren<LayoutProps>> = ({ title, session, csrfToken, cspNonce, scripts, children }) => {
+export const Layout: FC<PropsWithChildren<LayoutProps>> = ({ title, session, csrfToken, cspNonce, scripts, ogMeta, children }) => {
   const pageTitle = title ? `${title} - Quando` : "Quando";
   return (
     <html lang="en" data-theme="system">
@@ -17,6 +25,16 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({ title, session, csr
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{pageTitle}</title>
+        {ogMeta && (
+          <>
+            <meta property="og:site_name" content="Quando" />
+            <meta property="og:type" content="website" />
+            <meta property="og:title" content={ogMeta.title} />
+            <meta property="og:description" content={ogMeta.description} />
+            <meta property="og:url" content={ogMeta.url} />
+            {ogMeta.image && <meta property="og:image" content={ogMeta.image} />}
+          </>
+        )}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="/style.css" />
         {/* Inline script to apply saved theme before paint (avoids flash) */}

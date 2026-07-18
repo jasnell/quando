@@ -1,5 +1,6 @@
 import type { FC } from "hono/jsx";
 import { Layout } from "./layout";
+import type { OgMeta } from "./layout";
 import type { Session, PollWithSlots, ResponseWithValues } from "../types";
 import { formatSlotHeader, addMinutes, isPollExpired } from "../utils";
 
@@ -10,6 +11,7 @@ interface PollViewProps {
   responses: ResponseWithValues[];
   userResponse: ResponseWithValues | null;
   cspNonce?: string;
+  ogMeta?: OgMeta;
 }
 
 function generateMarkdown(poll: PollWithSlots, responses: ResponseWithValues[]): string {
@@ -84,7 +86,7 @@ const ValueIcon: FC<{ value: string }> = ({ value }) => {
   );
 };
 
-export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, responses, userResponse, cspNonce }) => {
+export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, responses, userResponse, cspNonce, ogMeta }) => {
   const isClosed = poll.closed_at !== null;
   const isExpired = isPollExpired(poll.slots, poll.timezone, poll.duration, poll.schedule_mode);
   const isDeadlinePassed = poll.closes_at ? new Date(poll.closes_at).getTime() <= Date.now() : false;
@@ -113,7 +115,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
   const maxTotal = Math.max(0, ...Object.values(totals));
 
   return (
-    <Layout title={poll.title} session={session} csrfToken={csrfToken} cspNonce={cspNonce} scripts={["/poll-respond.js"]}>
+    <Layout title={poll.title} session={session} csrfToken={csrfToken} cspNonce={cspNonce} scripts={["/poll-respond.js"]} ogMeta={ogMeta}>
       <div class="poll-header">
         <h1>{poll.title}</h1>
         <p class="poll-meta">
