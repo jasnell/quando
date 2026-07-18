@@ -151,14 +151,32 @@ Slot IDs are returned by `GET /api/polls/:id` in the `poll.slots` array.
 
 ## MCP Server
 
-Quando includes an [MCP](https://modelcontextprotocol.io/) server for AI assistants.
+Quando includes an [MCP](https://modelcontextprotocol.io/) endpoint for AI assistants, served directly from the Worker at `/mcp`.
 
 ### Setup
 
 1. Create an API token on the dashboard
-2. Configure your MCP client (e.g. OpenCode, Claude Desktop):
+2. Set the `QUANDO_API_TOKEN` environment variable
+3. Configure your MCP client:
 
-**opencode.json:**
+**opencode.json (remote — recommended):**
+```json
+{
+  "mcp": {
+    "quando": {
+      "type": "remote",
+      "url": "https://quando.jasnell.workers.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer {env:QUANDO_API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+A stdio wrapper (`mcp/server.mjs`) is also available for clients that only support local servers:
+
+**opencode.json (stdio):**
 ```json
 {
   "mcp": {
@@ -210,6 +228,7 @@ src/
 │   ├── auth.ts          # OAuth login/callback/logout
 │   ├── polls.tsx        # Poll CRUD, responses, .ics download
 │   ├── api.ts           # REST API (JSON, Bearer token auth)
+│   ├── mcp.ts           # MCP endpoint (JSON-RPC, Bearer token auth)
 │   └── dashboard.tsx    # User's poll list, token management
 ├── db/
 │   ├── schema.sql       # D1 schema
