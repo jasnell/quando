@@ -179,6 +179,14 @@ export const PollAdmin: FC<PollAdminProps> = ({ session, csrfToken, poll, respon
           </div>
         </div>
 
+        <div class="admin-action-group">
+          <h3>Use as template</h3>
+          <p class="muted">Create a new poll pre-filled with this poll's settings and slots.</p>
+          <a href={`/new?from=${poll.id}`} class="btn btn-sm btn-outline">
+            New poll from template
+          </a>
+        </div>
+
         <div class="admin-action-group danger-zone">
           <h3>Danger zone</h3>
           <p class="muted">This cannot be undone.</p>

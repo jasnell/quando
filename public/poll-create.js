@@ -498,6 +498,109 @@
     }
   }
 
+  // --- Template pre-population ---
+  function applyTemplate() {
+    var raw = form.getAttribute("data-template");
+    if (!raw) return;
+    var tpl;
+    try { tpl = JSON.parse(raw); } catch (e) { return; }
+
+    // Title, description, link
+    var titleEl = document.getElementById("title");
+    var descEl = document.getElementById("description");
+    var linkEl = document.getElementById("link");
+    if (titleEl && tpl.title) titleEl.value = tpl.title;
+    if (descEl && tpl.description) descEl.value = tpl.description;
+    if (linkEl && tpl.link) linkEl.value = tpl.link;
+
+    // Timezone
+    if (tpl.timezone && timezoneSelect) {
+      timezoneSelect.value = tpl.timezone;
+      if (timezoneSearch) timezoneSearch.value = tpl.timezone.replace(/_/g, " ");
+    }
+
+    // Schedule mode
+    if (tpl.schedule_mode) {
+      var modeRadio = document.querySelector('input[name="schedule_mode"][value="' + tpl.schedule_mode + '"]');
+      if (modeRadio) {
+        modeRadio.checked = true;
+        state.scheduleMode = tpl.schedule_mode;
+        if (tpl.schedule_mode === "weekly") {
+          calendarContainer.style.display = "none";
+          if (weekdayContainer) weekdayContainer.style.display = "";
+        }
+      }
+    }
+
+    // Poll type
+    if (tpl.poll_type) {
+      var typeRadio = document.querySelector('input[name="poll_type"][value="' + tpl.poll_type + '"]');
+      if (typeRadio) {
+        typeRadio.checked = true;
+        state.pollType = tpl.poll_type;
+        if (tpl.poll_type === "date") {
+          if (defaultTimeGroup) defaultTimeGroup.style.display = "none";
+          if (durationGroup) durationGroup.style.display = "none";
+        }
+      }
+    }
+
+    // Duration
+    if (tpl.duration && durationSelect) {
+      var found = false;
+      for (var i = 0; i < durationSelect.options.length; i++) {
+        if (durationSelect.options[i].value === String(tpl.duration)) {
+          durationSelect.value = String(tpl.duration);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        durationSelect.value = "custom";
+        if (customDurationDiv) customDurationDiv.style.display = "flex";
+        if (customDurationInput) {
+          customDurationInput.value = tpl.duration;
+          customDurationInput.name = "custom_duration";
+        }
+      }
+    }
+
+    // Hidden responses
+    var hiddenCheck = document.querySelector('input[name="responses_hidden"]');
+    if (hiddenCheck && tpl.responses_hidden) {
+      hiddenCheck.checked = true;
+    }
+
+    // Pre-populate slots
+    if (tpl.slots && tpl.slots.length > 0) {
+      for (var s = 0; s < tpl.slots.length; s++) {
+        var slot = tpl.slots[s];
+        var key = slot.date;
+        if (!state.selectedSlots.has(key)) {
+          state.selectedSlots.set(key, new Set());
+        }
+        if (slot.start_time && tpl.poll_type === "datetime") {
+          state.selectedSlots.get(key).add(slot.start_time);
+        }
+      }
+    }
+
+    // Re-render everything
+    if (state.scheduleMode === "weekly") {
+      renderWeekdayPicker();
+    } else {
+      // Navigate calendar to the first slot's month if it's a specific date
+      var firstSlot = tpl.slots && tpl.slots[0];
+      if (firstSlot && firstSlot.date && /^\d{4}-\d{2}-\d{2}$/.test(firstSlot.date)) {
+        var parts = firstSlot.date.split("-");
+        state.currentYear = parseInt(parts[0], 10);
+        state.currentMonth = parseInt(parts[1], 10) - 1;
+      }
+      renderCalendar();
+    }
+    renderSelectedSlots();
+  }
+
   // --- Init ---
   initTimezones();
   initScheduleModeToggle();
@@ -505,4 +608,5 @@
   initDuration();
   renderCalendar();
   renderSelectedSlots();
+  applyTemplate();
 })();

@@ -1,15 +1,30 @@
 import type { FC } from "hono/jsx";
 import { Layout } from "./layout";
-import type { Session } from "../types";
+import type { Session, PollWithSlots } from "../types";
 
 interface PollNewProps {
   session: Session;
   csrfToken: string;
   error?: string;
   cspNonce?: string;
+  template?: PollWithSlots;
 }
 
-export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce }) => {
+export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce, template }) => {
+  // Build template JSON for client-side pre-population
+  const templateData = template
+    ? JSON.stringify({
+        title: template.title,
+        description: template.description,
+        link: template.link,
+        timezone: template.timezone,
+        schedule_mode: template.schedule_mode,
+        poll_type: template.poll_type,
+        duration: template.duration,
+        responses_hidden: template.responses_hidden,
+        slots: template.slots.map((s) => ({ date: s.date, start_time: s.start_time })),
+      })
+    : undefined;
   return (
     <Layout title="Create a new poll" session={session} csrfToken={csrfToken} cspNonce={cspNonce} scripts={["/poll-create.js"]}>
       <div class="page-header">
@@ -18,7 +33,7 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce 
 
       {error && <div class="alert alert-error" role="alert">{error}</div>}
 
-      <form method="post" action="/new" id="create-poll-form" class="poll-form">
+      <form method="post" action="/new" id="create-poll-form" class="poll-form" data-template={templateData}>
         <input type="hidden" name="_csrf" value={csrfToken} />
         <div class="form-group">
           <label for="title">Title</label>

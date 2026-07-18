@@ -13,11 +13,19 @@ const polls = new Hono<PollEnv>();
 
 // --- Create poll ---
 
-polls.get("/new", requireAuth, (c) => {
+polls.get("/new", requireAuth, async (c) => {
   const session = c.get("session")!;
   const csrfToken = c.get("csrfToken");
   const cspNonce = c.get("cspNonce");
-  return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} />);
+
+  // Support "use as template" — load source poll if ?from= is provided
+  const fromId = c.req.query("from");
+  let template = undefined;
+  if (fromId) {
+    template = await db.getPollWithSlots(c.env.DB, fromId) ?? undefined;
+  }
+
+  return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} template={template} />);
 });
 
 polls.post("/new", requireAuth, async (c) => {
