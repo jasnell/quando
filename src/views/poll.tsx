@@ -63,6 +63,16 @@ function generateMarkdown(poll: PollWithSlots, responses: ResponseWithValues[]):
   return lines.join("\n");
 }
 
+const ValueIcon: FC<{ value: string }> = ({ value }) => {
+  const symbol = value === "yes" ? "\u2713" : value === "maybe" ? "?" : "\u2717";
+  const label = value === "yes" ? "Yes" : value === "maybe" ? "Maybe" : "No";
+  return (
+    <span aria-label={label} role="img">
+      {symbol}
+    </span>
+  );
+};
+
 export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, responses, userResponse }) => {
   const isClosed = poll.closed_at !== null;
   const isExpired = isPollExpired(poll.slots, poll.timezone, poll.duration);
@@ -132,8 +142,8 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
       {(canSeeResponses && responses.length > 0 || acceptingResponses) && (
         <div class="poll-toolbar">
           <div class="view-toggle" id="view-toggle">
-            <button type="button" class="view-toggle-btn active" data-view="table">Table</button>
-            <button type="button" class="view-toggle-btn" data-view="list">List</button>
+          <button type="button" class="view-toggle-btn active" data-view="table" aria-pressed="true">Table</button>
+          <button type="button" class="view-toggle-btn" data-view="list" aria-pressed="false">List</button>
           </div>
           {canSeeResponses && responses.length > 0 && (
             <button type="button" class="btn btn-sm btn-outline" id="copy-markdown-btn">
@@ -180,7 +190,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                       const val = r.values[slot.id] ?? "no";
                       return (
                         <td class={`value-cell value-${val}`}>
-                          {val === "yes" ? "\u2713" : val === "maybe" ? "?" : "\u2717"}
+                          <ValueIcon value={val} />
                         </td>
                       );
                     })}
@@ -235,7 +245,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                       const val = r.values[slot.id] ?? "no";
                       return (
                         <span class={`respondent-chip value-${val}`}>
-                          {val === "yes" ? "\u2713" : val === "maybe" ? "?" : "\u2717"}{" "}
+                          <ValueIcon value={val} />{" "}
                           @{r.github_login}
                         </span>
                       );
@@ -294,6 +304,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                               class={`toggle-btn value-${currentVal}`}
                               data-slot-id={slot.id}
                               data-value={currentVal}
+                              aria-label={`${formatSlotHeader(slot.date, slot.start_time, poll.timezone, poll.duration)}: ${currentVal}`}
                             >
                               {currentVal === "yes" ? "\u2713" : currentVal === "maybe" ? "?" : "\u2717"}
                             </button>
@@ -324,12 +335,13 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                         </div>
                         <div class="slot-card-local-time" data-timezone={poll.timezone} data-poll-type={poll.poll_type} data-duration={poll.duration ?? ""}></div>
                       </div>
-                      <div class="respond-card-buttons">
+                      <div class="respond-card-buttons" role="group" aria-label={formatSlotHeader(slot.date, slot.start_time, poll.timezone, poll.duration)}>
                         <button
                           type="button"
                           class={`respond-opt ${currentVal === "yes" ? "active" : ""}`}
                           data-slot-id={slot.id}
                           data-opt="yes"
+                          aria-pressed={currentVal === "yes" ? "true" : "false"}
                         >
                           {"\u2713"} Yes
                         </button>
@@ -338,6 +350,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                           class={`respond-opt ${currentVal === "maybe" ? "active" : ""}`}
                           data-slot-id={slot.id}
                           data-opt="maybe"
+                          aria-pressed={currentVal === "maybe" ? "true" : "false"}
                         >
                           ? Maybe
                         </button>
@@ -346,6 +359,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                           class={`respond-opt ${currentVal === "no" ? "active" : ""}`}
                           data-slot-id={slot.id}
                           data-opt="no"
+                          aria-pressed={currentVal === "no" ? "true" : "false"}
                         >
                           {"\u2717"} No
                         </button>

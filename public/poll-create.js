@@ -102,58 +102,84 @@
 
   // --- Calendar rendering ---
   function renderCalendar() {
-    const year = state.currentYear;
-    const month = state.currentMonth;
+    var year = state.currentYear;
+    var month = state.currentMonth;
 
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDow = (firstDay.getDay() + 6) % 7; // Monday = 0
-    const daysInMonth = lastDay.getDate();
+    var firstDay = new Date(year, month, 1);
+    var lastDay = new Date(year, month + 1, 0);
+    var startDow = (firstDay.getDay() + 6) % 7; // Monday = 0
+    var daysInMonth = lastDay.getDate();
 
-    const monthName = firstDay.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    var monthName = firstDay.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-    let html = '<div class="calendar">';
+    var html = '<div class="calendar" role="group" aria-label="' + monthName + '">';
     html += '<div class="calendar-nav">';
     html += '<button type="button" class="cal-prev" aria-label="Previous month">&lsaquo;</button>';
-    html += '<span class="cal-month">' + monthName + "</span>";
+    html += '<span class="cal-month" id="cal-month-label" aria-live="polite">' + monthName + "</span>";
     html += '<button type="button" class="cal-next" aria-label="Next month">&rsaquo;</button>';
     html += "</div>";
 
-    html += '<div class="calendar-grid">';
-    const dayNames = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-    for (const d of dayNames) {
-      html += '<div class="cal-header">' + d + "</div>";
-    }
+    html += '<div class="calendar-grid" role="grid" aria-labelledby="cal-month-label">';
 
-    // Empty cells before first day
-    for (let i = 0; i < startDow; i++) {
-      html += '<div class="cal-empty"></div>';
+    // Day name headers
+    var dayNamesFull = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    var dayNamesShort = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+    html += '<div role="row" class="cal-header-row">';
+    for (var i = 0; i < dayNamesShort.length; i++) {
+      html += '<div role="columnheader" class="cal-header" abbr="' + dayNamesFull[i] + '">' + dayNamesShort[i] + "</div>";
     }
+    html += "</div>";
 
-    const today = new Date();
+    // Build rows (weeks)
+    var today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const dateObj = new Date(year, month, day);
-      const isPast = dateObj < today;
-      const isSelected = state.selectedSlots.has(dateStr);
-      const isToday = dateObj.getTime() === today.getTime();
+    var cellIndex = 0;
+    var totalCells = startDow + daysInMonth;
+    var day = 1;
 
-      let cls = "cal-day";
-      if (isPast) cls += " cal-past";
-      if (isSelected) cls += " cal-selected";
-      if (isToday) cls += " cal-today";
+    while (cellIndex < totalCells) {
+      html += '<div role="row">';
+      for (var col = 0; col < 7 && cellIndex < totalCells; col++, cellIndex++) {
+        if (cellIndex < startDow) {
+          html += '<div role="gridcell" class="cal-empty"></div>';
+        } else {
+          var dateStr = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+          var dateObj = new Date(year, month, day);
+          var isPast = dateObj < today;
+          var isSelected = state.selectedSlots.has(dateStr);
+          var isToday = dateObj.getTime() === today.getTime();
 
-      html += '<button type="button" class="' + cls + '" data-date="' + dateStr + '"';
-      if (isPast) html += " disabled";
-      html += ">" + day + "</button>";
+          var dateLabel = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+          if (isSelected) dateLabel += ", selected";
+
+          var cls = "cal-day";
+          if (isPast) cls += " cal-past";
+          if (isSelected) cls += " cal-selected";
+          if (isToday) cls += " cal-today";
+
+          html += '<button type="button" role="gridcell" class="' + cls + '" data-date="' + dateStr + '"';
+          html += ' aria-selected="' + isSelected + '"';
+          html += ' aria-label="' + dateLabel + '"';
+          if (isPast) html += ' aria-disabled="true" disabled';
+          html += ' tabindex="-1"';
+          html += ">" + day + "</button>";
+          day++;
+        }
+      }
+      html += "</div>";
     }
 
     html += "</div></div>";
     calendarContainer.innerHTML = html;
 
-    // Event listeners
+    // Set tabindex="0" on the first focusable day (or today, or first selected)
+    var focusTarget = calendarContainer.querySelector(".cal-today:not([disabled])") ||
+      calendarContainer.querySelector(".cal-selected") ||
+      calendarContainer.querySelector(".cal-day:not([disabled])");
+    if (focusTarget) focusTarget.setAttribute("tabindex", "0");
+
+    // Event listeners — nav buttons
     calendarContainer.querySelector(".cal-prev").addEventListener("click", function () {
       state.currentMonth--;
       if (state.currentMonth < 0) {
@@ -172,11 +198,49 @@
       renderCalendar();
     });
 
-    for (const btn of calendarContainer.querySelectorAll(".cal-day:not([disabled])")) {
+    // Click to select
+    for (var btn of calendarContainer.querySelectorAll(".cal-day:not([disabled])")) {
       btn.addEventListener("click", function () {
         toggleDate(this.dataset.date);
       });
     }
+
+    // Keyboard navigation within the grid
+    calendarContainer.querySelector(".calendar-grid").addEventListener("keydown", function (e) {
+      var current = document.activeElement;
+      if (!current || !current.classList.contains("cal-day")) return;
+
+      var allDays = Array.from(calendarContainer.querySelectorAll(".cal-day"));
+      var idx = allDays.indexOf(current);
+      var target = null;
+
+      if (e.key === "ArrowRight") {
+        target = allDays[idx + 1];
+      } else if (e.key === "ArrowLeft") {
+        target = allDays[idx - 1];
+      } else if (e.key === "ArrowDown") {
+        target = allDays[idx + 7];
+      } else if (e.key === "ArrowUp") {
+        target = allDays[idx - 7];
+      } else if (e.key === "Home") {
+        target = allDays[0];
+      } else if (e.key === "End") {
+        target = allDays[allDays.length - 1];
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (!current.disabled) toggleDate(current.dataset.date);
+        return;
+      } else {
+        return;
+      }
+
+      if (target) {
+        e.preventDefault();
+        current.setAttribute("tabindex", "-1");
+        target.setAttribute("tabindex", "0");
+        target.focus();
+      }
+    });
   }
 
   function toggleDate(dateStr) {

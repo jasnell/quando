@@ -1,7 +1,18 @@
 import type { FC } from "hono/jsx";
 import { Layout } from "./layout";
 import type { Session, PollWithSlots, ResponseWithValues } from "../types";
+import type { FC as FC2 } from "hono/jsx";
 import { formatSlotHeader } from "../utils";
+
+const ValueIcon: FC2<{ value: string }> = ({ value }) => {
+  const symbol = value === "yes" ? "\u2713" : value === "maybe" ? "?" : "\u2717";
+  const label = value === "yes" ? "Yes" : value === "maybe" ? "Maybe" : "No";
+  return (
+    <span aria-label={label} role="img">
+      {symbol}
+    </span>
+  );
+};
 
 interface PollAdminProps {
   session: Session;
@@ -77,7 +88,7 @@ export const PollAdmin: FC<PollAdminProps> = ({ session, csrfToken, poll, respon
                       const val = r.values[slot.id] ?? "no";
                       return (
                         <td class={`value-cell value-${val}`}>
-                          {val === "yes" ? "\u2713" : val === "maybe" ? "?" : "\u2717"}
+                          <ValueIcon value={val} />
                         </td>
                       );
                     })}

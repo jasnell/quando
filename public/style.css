@@ -26,6 +26,48 @@ a:hover {
   text-decoration: underline;
 }
 
+/* --- Focus styles --- */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.toggle-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.respond-opt:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.cal-day:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+/* --- Skip link --- */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  background: #2563eb;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  z-index: 100;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 0;
+}
+
 /* --- Layout --- */
 .container {
   max-width: 900px;
@@ -328,6 +370,12 @@ select.input {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
+}
+.calendar-grid > [role="row"],
+.cal-header-row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
 }
 .cal-header {
   text-align: center;
@@ -1068,6 +1116,16 @@ thead .name-col {
   text-align: center;
   font-size: 0.8125rem;
   color: #9ca3af;
+}
+
+/* --- Reduced motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* --- Utilities --- */

@@ -15,7 +15,7 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error }) => {
         <h1>Create a new poll</h1>
       </div>
 
-      {error && <div class="alert alert-error">{error}</div>}
+      {error && <div class="alert alert-error" role="alert">{error}</div>}
 
       <form method="post" action="/new" id="create-poll-form" class="poll-form">
         <input type="hidden" name="_csrf" value={csrfToken} />

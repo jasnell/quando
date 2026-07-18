@@ -13,6 +13,12 @@
       tableBtn.dataset.value = value;
       tableBtn.textContent = labels[value];
       tableBtn.className = "toggle-btn value-" + value;
+      // Update aria-label: replace the value portion after the last colon
+      var currentLabel = tableBtn.getAttribute("aria-label") || "";
+      var colonIdx = currentLabel.lastIndexOf(":");
+      if (colonIdx !== -1) {
+        tableBtn.setAttribute("aria-label", currentLabel.substring(0, colonIdx + 1) + " " + value);
+      }
     }
 
     // Update hidden input (lives in the table view)
@@ -23,11 +29,13 @@
     var listBtns = document.querySelectorAll('.view-list .respond-opt[data-slot-id="' + slotId + '"]');
     for (var i = 0; i < listBtns.length; i++) {
       var btn = listBtns[i];
-      if (btn.dataset.opt === value) {
+      var isActive = btn.dataset.opt === value;
+      if (isActive) {
         btn.classList.add("active");
       } else {
         btn.classList.remove("active");
       }
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
     }
   }
 
@@ -67,11 +75,13 @@
       }
 
       for (var i = 0; i < toggleBtns.length; i++) {
-        if (toggleBtns[i].dataset.view === view) {
+        var isActive = toggleBtns[i].dataset.view === view;
+        if (isActive) {
           toggleBtns[i].classList.add("active");
         } else {
           toggleBtns[i].classList.remove("active");
         }
+        toggleBtns[i].setAttribute("aria-pressed", isActive ? "true" : "false");
       }
 
       try {

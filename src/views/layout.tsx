@@ -20,6 +20,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({ title, session, csr
         <link rel="stylesheet" href="/style.css" />
       </head>
       <body>
+        <a href="#main-content" class="skip-link">Skip to content</a>
         <header class="site-header">
           <div class="header-inner">
             <a href="/" class="logo">
@@ -70,7 +71,7 @@ export const Layout: FC<PropsWithChildren<LayoutProps>> = ({ title, session, csr
             </nav>
           </div>
         </header>
-        <main class="container">{children}</main>
+        <main class="container" id="main-content">{children}</main>
         <footer class="site-footer">
           <div class="container">
             <p>
