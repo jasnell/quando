@@ -7,8 +7,8 @@ interface StatsProps {
 
 export const Stats: FC<StatsProps> = ({ stats }) => {
   return (
-    <div class="stats-section">
-      <h2>Activity</h2>
+    <details class="stats-section collapsible-section">
+      <summary><h2>Activity</h2></summary>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-value">{stats.activePolls}</div>
@@ -38,6 +38,6 @@ export const Stats: FC<StatsProps> = ({ stats }) => {
           </ol>
         </div>
       )}
-    </div>
+    </details>
   );
 };

@@ -4,6 +4,7 @@ import { sessionMiddleware, validateCsrf } from "./auth";
 import { auth } from "./routes/auth";
 import { polls } from "./routes/polls";
 import { dashboard } from "./routes/dashboard";
+import { api } from "./routes/api";
 import { Landing } from "./views/landing";
 import { Privacy } from "./views/privacy";
 import { getSiteStats } from "./db/queries";
@@ -12,8 +13,15 @@ type AppEnv = { Bindings: Env; Variables: { session: Session | null; cspNonce: s
 
 const app = new Hono<AppEnv>();
 
-// Security headers (generate per-request nonce for inline scripts)
+// Security headers for HTML pages (generate per-request nonce for inline scripts)
 app.use("*", async (c, next) => {
+  // Skip CSP/session overhead for API routes — they have their own Bearer auth
+  if (c.req.path.startsWith("/api/")) {
+    await next();
+    c.header("X-Content-Type-Options", "nosniff");
+    return;
+  }
+
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   const nonce = btoa(String.fromCharCode(...bytes));
@@ -28,13 +36,19 @@ app.use("*", async (c, next) => {
   );
 });
 
-// Session middleware runs on all routes
-app.use("*", sessionMiddleware);
+// Session middleware runs on all non-API routes
+app.use("*", async (c, next) => {
+  if (c.req.path.startsWith("/api/")) {
+    return next();
+  }
+  return sessionMiddleware(c, next);
+});
 
-// CSRF validation on all POSTs (except /auth/* which handles its own state)
+// CSRF validation on all POSTs (except /auth/* which handles its own state, and /api/* which uses tokens)
 app.use("/new", validateCsrf);
 app.use("/p/*", validateCsrf);
 app.use("/account/*", validateCsrf);
+app.use("/api-tokens/*", validateCsrf);
 
 // Landing page
 app.get("/", async (c) => {
@@ -54,6 +68,7 @@ app.get("/privacy", (c) => {
 
 // Mount route groups
 app.route("/auth", auth);
+app.route("/api", api);
 app.route("/", polls);
 app.route("/", dashboard);
 
@@ -84,6 +99,11 @@ export default {
     // Delete open weekly polls older than 90 days (no date-based expiration)
     await env.DB.prepare(
       "DELETE FROM polls WHERE closed_at IS NULL AND schedule_mode = 'weekly' AND created_at < datetime('now', '-90 days')"
+    ).run();
+
+    // Delete expired API tokens (expired more than 7 days ago)
+    await env.DB.prepare(
+      "DELETE FROM api_tokens WHERE expires_at IS NOT NULL AND expires_at < datetime('now', '-7 days')"
     ).run();
   },
 };

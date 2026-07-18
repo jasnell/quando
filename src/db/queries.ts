@@ -395,3 +395,63 @@ export async function getSlots(db: D1Database, pollId: string): Promise<Slot[]> 
     .all<Slot>();
   return results;
 }
+
+// --- API Tokens ---
+
+export interface ApiToken {
+  id: number;
+  github_id: string;
+  github_login: string;
+  name: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
+async function hashToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function createApiToken(
+  db: D1Database,
+  githubId: string,
+  githubLogin: string,
+  name: string,
+  expiresAt: string | null
+): Promise<string> {
+  const token = "quando_" + crypto.randomUUID().replace(/-/g, "");
+  const tokenHash = await hashToken(token);
+  await db
+    .prepare("INSERT INTO api_tokens (token_hash, github_id, github_login, name, expires_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(tokenHash, githubId, githubLogin, name, expiresAt)
+    .run();
+  return token;
+}
+
+export async function validateApiToken(
+  db: D1Database,
+  token: string
+): Promise<{ github_id: string; github_login: string } | null> {
+  const tokenHash = await hashToken(token);
+  return db
+    .prepare("SELECT github_id, github_login FROM api_tokens WHERE token_hash = ? AND (expires_at IS NULL OR expires_at > datetime('now'))")
+    .bind(tokenHash)
+    .first<{ github_id: string; github_login: string }>();
+}
+
+export async function listApiTokens(db: D1Database, githubId: string): Promise<ApiToken[]> {
+  const { results } = await db
+    .prepare("SELECT id, github_id, github_login, name, expires_at, created_at FROM api_tokens WHERE github_id = ? ORDER BY created_at DESC")
+    .bind(githubId)
+    .all<ApiToken>();
+  return results;
+}
+
+export async function revokeApiToken(db: D1Database, tokenId: number, githubId: string): Promise<boolean> {
+  const result = await db
+    .prepare("DELETE FROM api_tokens WHERE id = ? AND github_id = ?")
+    .bind(tokenId, githubId)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
+}

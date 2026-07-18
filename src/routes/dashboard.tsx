@@ -12,12 +12,50 @@ dashboard.get("/dashboard", requireAuth, async (c) => {
   const session = c.get("session")!;
   const csrfToken = c.get("csrfToken");
   const cspNonce = c.get("cspNonce");
-  const [polls, respondedPolls, stats] = await Promise.all([
+  const [polls, respondedPolls, stats, apiTokens] = await Promise.all([
     db.listPollsByCreator(c.env.DB, session.github_id),
     db.listPollsRespondedTo(c.env.DB, session.github_id),
     db.getSiteStats(c.env.DB),
+    db.listApiTokens(c.env.DB, session.github_id),
   ]);
-  return c.html(<Dashboard session={session} csrfToken={csrfToken} polls={polls} respondedPolls={respondedPolls} stats={stats} cspNonce={cspNonce} />);
+  const newToken = c.req.query("new_token") ?? undefined;
+  return c.html(<Dashboard session={session} csrfToken={csrfToken} polls={polls} respondedPolls={respondedPolls} stats={stats} apiTokens={apiTokens} newToken={newToken} cspNonce={cspNonce} />);
+});
+
+dashboard.post("/api-tokens/create", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const form = await c.req.formData();
+  const name = (form.get("token_name") as string | null)?.trim() || "Untitled";
+  const expiry = (form.get("token_expiry") as string | null) ?? "90";
+
+  // Limit to 10 tokens
+  const existing = await db.listApiTokens(c.env.DB, session.github_id);
+  if (existing.length >= 10) {
+    return c.redirect("/dashboard");
+  }
+
+  // Calculate expiration
+  let expiresAt: string | null = null;
+  if (expiry !== "never") {
+    const days = parseInt(expiry, 10);
+    if (!isNaN(days) && days > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      expiresAt = d.toISOString();
+    }
+  }
+
+  const token = await db.createApiToken(c.env.DB, session.github_id, session.github_login, name.slice(0, 100), expiresAt);
+  return c.redirect(`/dashboard?new_token=${encodeURIComponent(token)}`);
+});
+
+dashboard.post("/api-tokens/:id/revoke", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const tokenId = Number(c.req.param("id"));
+  if (tokenId) {
+    await db.revokeApiToken(c.env.DB, tokenId, session.github_id);
+  }
+  return c.redirect("/dashboard");
 });
 
 dashboard.get("/account/export", requireAuth, async (c) => {

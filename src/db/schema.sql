@@ -48,3 +48,16 @@ CREATE TABLE IF NOT EXISTS response_values (
   value       TEXT NOT NULL CHECK (value IN ('yes', 'no', 'maybe')),
   PRIMARY KEY (response_id, slot_id)
 );
+
+CREATE TABLE IF NOT EXISTS api_tokens (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_hash   TEXT NOT NULL UNIQUE,
+  github_id    TEXT NOT NULL,
+  github_login TEXT NOT NULL,
+  name         TEXT NOT NULL,
+  expires_at   TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(github_id);

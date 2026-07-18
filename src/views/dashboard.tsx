@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import { Layout } from "./layout";
 import type { Session, Poll, SiteStats } from "../types";
+import type { ApiToken } from "../db/queries";
 import { Stats } from "./stats";
 
 interface DashboardProps {
@@ -9,10 +10,12 @@ interface DashboardProps {
   polls: Poll[];
   respondedPolls: Poll[];
   stats: SiteStats;
+  apiTokens: ApiToken[];
+  newToken?: string;
   cspNonce?: string;
 }
 
-export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respondedPolls, stats, cspNonce }) => {
+export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respondedPolls, stats, apiTokens, newToken, cspNonce }) => {
   return (
     <Layout title="My polls" session={session} csrfToken={csrfToken} cspNonce={cspNonce}>
       <div class="page-header">
@@ -95,8 +98,68 @@ export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respo
 
       <Stats stats={stats} />
 
-      <div class="account-section">
-        <h2>Your data</h2>
+      <details class="account-section collapsible-section" open={!!newToken || undefined}>
+        <summary><h2>API tokens</h2></summary>
+        <p class="muted">
+          Create tokens to use the Quando REST API or MCP server.
+        </p>
+
+        {newToken && (
+          <div class="alert alert-token" role="alert">
+            <strong>Token created!</strong> Copy it now — it won't be shown again.
+            <div class="token-display">
+              <code>{newToken}</code>
+            </div>
+          </div>
+        )}
+
+        {apiTokens.length > 0 && (
+          <div class="token-list">
+            {apiTokens.map((t) => {
+              const isExpired = t.expires_at && new Date(t.expires_at).getTime() <= Date.now();
+              return (
+                <div class={`token-item ${isExpired ? "token-expired" : ""}`}>
+                  <div>
+                    <strong>{t.name}</strong>
+                    {isExpired && <span class="badge badge-closed">Expired</span>}
+                    <br />
+                    <span class="muted">
+                      Created {new Date(t.created_at + "Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {t.expires_at
+                        ? ` · ${isExpired ? "Expired" : "Expires"} ${new Date(t.expires_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                        : " · Never expires"
+                      }
+                    </span>
+                  </div>
+                  <form method="post" action={`/api-tokens/${t.id}/revoke`} class="inline-form">
+                    <input type="hidden" name="_csrf" value={csrfToken} />
+                    <button type="submit" class="btn-link" style="color: var(--error)" data-confirm="Revoke this API token? Any tools using it will stop working.">
+                      Revoke
+                    </button>
+                  </form>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <form method="post" action="/api-tokens/create" class="token-create-form">
+          <input type="hidden" name="_csrf" value={csrfToken} />
+          <input type="text" name="token_name" placeholder="Token name (e.g. MCP)" class="input" style="max-width: 14rem" maxLength={100} required />
+          <select name="token_expiry" class="input" style="max-width: 10rem">
+            <option value="30">30 days</option>
+            <option value="60">60 days</option>
+            <option value="90" selected>90 days</option>
+            <option value="180">180 days</option>
+            <option value="365">1 year</option>
+            <option value="never">Never</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-outline">Create token</button>
+        </form>
+      </details>
+
+      <details class="account-section collapsible-section">
+        <summary><h2>Your data</h2></summary>
         <p class="muted">
           Quando stores your GitHub username, the polls you create, and the
           responses you submit. See our <a href="/privacy">privacy policy</a>.
@@ -116,7 +179,7 @@ export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respo
             </button>
           </form>
         </div>
-      </div>
+      </details>
     </Layout>
   );
 };
