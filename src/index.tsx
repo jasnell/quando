@@ -62,15 +62,19 @@ export default {
       "DELETE FROM polls WHERE closed_at IS NOT NULL AND closed_at < datetime('now', '-90 days')"
     ).run();
 
-    // Delete open polls whose latest slot is more than 90 days in the past
-    // (polls that were never closed but are long expired)
+    // Delete open specific-date polls whose latest slot is more than 90 days in the past
     await env.DB.prepare(
-      `DELETE FROM polls WHERE closed_at IS NULL AND id IN (
+      `DELETE FROM polls WHERE closed_at IS NULL AND schedule_mode = 'specific' AND id IN (
         SELECT p.id FROM polls p
         JOIN slots s ON s.poll_id = p.id
         GROUP BY p.id
         HAVING MAX(s.date) < date('now', '-90 days')
       )`
+    ).run();
+
+    // Delete open weekly polls older than 90 days (no date-based expiration)
+    await env.DB.prepare(
+      "DELETE FROM polls WHERE closed_at IS NULL AND schedule_mode = 'weekly' AND created_at < datetime('now', '-90 days')"
     ).run();
   },
 };

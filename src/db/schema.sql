@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS polls (
   description       TEXT,
   link              TEXT,
   timezone          TEXT NOT NULL DEFAULT 'UTC',
+  schedule_mode     TEXT NOT NULL DEFAULT 'specific' CHECK (schedule_mode IN ('specific', 'weekly')),
   poll_type         TEXT NOT NULL DEFAULT 'datetime' CHECK (poll_type IN ('date', 'datetime')),
   duration          INTEGER,
   responses_hidden  INTEGER NOT NULL DEFAULT 0,

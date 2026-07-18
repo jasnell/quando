@@ -12,6 +12,7 @@ export async function createPoll(
     description: string | null;
     link: string | null;
     timezone: string;
+    schedule_mode: "specific" | "weekly";
     poll_type: "date" | "datetime";
     duration: number | null;
     responses_hidden: boolean;
@@ -23,8 +24,8 @@ export async function createPoll(
   stmts.push(
     db
       .prepare(
-        `INSERT INTO polls (id, creator_github_id, creator_login, title, description, link, timezone, poll_type, duration, responses_hidden)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO polls (id, creator_github_id, creator_login, title, description, link, timezone, schedule_mode, poll_type, duration, responses_hidden)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         poll.id,
@@ -34,6 +35,7 @@ export async function createPoll(
         poll.description,
         poll.link,
         poll.timezone,
+        poll.schedule_mode,
         poll.poll_type,
         poll.duration,
         poll.responses_hidden ? 1 : 0

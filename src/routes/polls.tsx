@@ -56,6 +56,7 @@ polls.post("/new", requireAuth, async (c) => {
     }
   }
   const timezone = (form.get("timezone") as string | null)?.trim() ?? "UTC";
+  const scheduleMode = (form.get("schedule_mode") as string | null) === "weekly" ? "weekly" as const : "specific" as const;
   const pollType = (form.get("poll_type") as string | null) === "date" ? "date" : "datetime";
   const responsesHidden = form.get("responses_hidden") === "1";
 
@@ -98,9 +99,16 @@ polls.post("/new", requireAuth, async (c) => {
     const date = slotDates[i]!;
     const time = pollType === "datetime" ? (slotTimes[i] ?? null) : null;
 
-    // Validate date format (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid date: ${date}`} />, 400);
+    // Validate date format
+    const validWeekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    if (scheduleMode === "weekly") {
+      if (!validWeekdays.includes(date)) {
+        return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid day: ${date}`} />, 400);
+      }
+    } else {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid date: ${date}`} />, 400);
+      }
     }
 
     // Validate time format (HH:MM) if present
@@ -123,6 +131,7 @@ polls.post("/new", requireAuth, async (c) => {
       description,
       link,
       timezone,
+      schedule_mode: scheduleMode,
       poll_type: pollType,
       duration,
       responses_hidden: responsesHidden,
@@ -168,7 +177,7 @@ polls.post("/p/:id/respond", requireAuth, async (c) => {
     return c.text("Poll is closed", 400);
   }
 
-  if (isPollExpired(poll.slots, poll.timezone, poll.duration)) {
+  if (isPollExpired(poll.slots, poll.timezone, poll.duration, poll.schedule_mode)) {
     return c.text("Poll has expired", 400);
   }
 

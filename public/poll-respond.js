@@ -114,6 +114,45 @@
   }
 
   // --- Local timezone display ---
+
+  // Convert a wall-clock date+time in a given timezone to a correct UTC Date.
+  // e.g. wallClockToUTC("2026-08-03", "09:00", "America/New_York") returns the
+  // Date representing 9:00 AM EDT (which is 13:00 UTC), not 9:00 AM in the
+  // browser's local timezone.
+  function wallClockToUTC(isoDate, time, timezone) {
+    // Start with a UTC guess: treat the wall-clock time as if it were UTC
+    var utcGuess = new Date(isoDate + "T" + time + ":00Z");
+
+    // Format that UTC instant in the target timezone to see what wall-clock
+    // time it maps to there
+    var parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(utcGuess);
+
+    var get = function (type) {
+      var p = parts.find(function (p) { return p.type === type; });
+      return p ? p.value : "00";
+    };
+
+    // Build a UTC Date from what the timezone thinks the wall-clock time is
+    var tzWall = new Date(
+      get("year") + "-" + get("month") + "-" + get("day") +
+      "T" + String(get("hour")).padStart(2, "0") + ":" + get("minute") + ":00Z"
+    );
+
+    // The difference is the timezone's UTC offset at that instant.
+    // Subtract it so that formatting the result in the target timezone
+    // yields the originally desired wall-clock time.
+    var offsetMs = tzWall.getTime() - utcGuess.getTime();
+    return new Date(utcGuess.getTime() - offsetMs);
+  }
+
   function formatLocalTime(dateObj, tz) {
     return dateObj.toLocaleTimeString("en-US", {
       hour: "numeric",
@@ -159,7 +198,16 @@
   function populateLocalTime(el, date, time, pollTz, localTz, duration) {
     if (!el || !date || !time) return;
 
-    var startObj = new Date(date + "T" + time + ":00");
+    // For weekly polls, date is a day name — use a reference Monday (2026-01-05) + offset
+    var weekdayOffsets = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
+    var isoDate = date;
+    if (weekdayOffsets[date] !== undefined) {
+      var refDay = 5 + weekdayOffsets[date]; // 2026-01-05 is a Monday
+      isoDate = "2026-01-" + String(refDay).padStart(2, "0");
+    }
+
+    // Resolve the wall-clock time in the poll's timezone to a correct UTC instant
+    var startObj = wallClockToUTC(isoDate, time, pollTz);
     var localStart = formatLocalTime(startObj, localTz);
     var pollStart = formatLocalTime(startObj, pollTz);
 

@@ -75,7 +75,7 @@ const ValueIcon: FC<{ value: string }> = ({ value }) => {
 
 export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, responses, userResponse }) => {
   const isClosed = poll.closed_at !== null;
-  const isExpired = isPollExpired(poll.slots, poll.timezone, poll.duration);
+  const isExpired = isPollExpired(poll.slots, poll.timezone, poll.duration, poll.schedule_mode);
   const acceptingResponses = !isClosed && !isExpired;
   const isCreator = session.github_id === poll.creator_github_id;
   const canSeeResponses = !poll.responses_hidden || isCreator || isClosed;

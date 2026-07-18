@@ -275,6 +275,10 @@ select.input {
   flex-direction: column;
   gap: 0.5rem;
 }
+.radio-group-horizontal {
+  flex-direction: row;
+  gap: 1.5rem;
+}
 .radio-label {
   display: flex;
   align-items: baseline;
@@ -416,6 +420,40 @@ select.input {
 .cal-day.cal-past {
   color: #d1d5db;
   cursor: default;
+}
+
+/* --- Weekday picker --- */
+.weekday-container {
+  max-width: 22rem;
+}
+.weekday-picker {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+.weekday-btn {
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.weekday-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+.weekday-btn.weekday-selected {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
+.weekday-btn.weekday-selected:hover {
+  background: #1d4ed8;
 }
 
 /* --- Selected slots --- */

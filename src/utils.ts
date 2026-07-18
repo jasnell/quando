@@ -1,6 +1,21 @@
-// Format a date string (ISO) in a given timezone for display
-export function formatDate(isoDate: string, timezone: string): string {
-  const date = new Date(isoDate + "T12:00:00Z"); // noon UTC to avoid date shift
+const WEEKDAY_NAMES: Record<string, string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
+
+// Format a date string (ISO date or weekday name) for display
+export function formatDate(dateOrDay: string, timezone: string): string {
+  // Weekly mode: date is a weekday name like "monday"
+  if (WEEKDAY_NAMES[dateOrDay]) {
+    return WEEKDAY_NAMES[dateOrDay]!;
+  }
+  // Specific mode: date is ISO like "2026-07-21"
+  const date = new Date(dateOrDay + "T12:00:00Z"); // noon UTC to avoid date shift
   return date.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -46,11 +61,14 @@ export function formatSlotHeader(
 }
 
 // Check if a poll's latest slot is in the past
+// Weekly polls never expire by date — they must be closed manually
 export function isPollExpired(
   slots: { date: string; start_time: string | null }[],
   timezone: string,
-  duration: number | null
+  duration: number | null,
+  scheduleMode: "specific" | "weekly" = "specific"
 ): boolean {
+  if (scheduleMode === "weekly") return false;
   if (slots.length === 0) return true;
 
   // Find the latest slot end time

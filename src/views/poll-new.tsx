@@ -56,6 +56,20 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error }) => {
           />
         </div>
 
+        <div class="form-group">
+          <label>Schedule</label>
+          <div class="radio-group radio-group-horizontal">
+            <label class="radio-label">
+              <input type="radio" name="schedule_mode" value="specific" checked />
+              <span>Specific dates</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="schedule_mode" value="weekly" />
+              <span>Days of the week</span>
+            </label>
+          </div>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label for="timezone">Timezone</label>
@@ -119,13 +133,16 @@ export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error }) => {
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="date-picker-group">
           <label>Select dates</label>
           <div id="calendar-container" class="calendar-container">
             {/* Calendar rendered by client-side JS */}
             <noscript>
               <p>JavaScript is required to use the date picker.</p>
             </noscript>
+          </div>
+          <div id="weekday-container" class="weekday-container" style="display:none">
+            {/* Weekday picker rendered by client-side JS */}
           </div>
         </div>
 

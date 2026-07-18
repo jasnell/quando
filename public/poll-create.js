@@ -5,10 +5,11 @@
 
   // --- State ---
   const state = {
-    selectedSlots: new Map(), // "YYYY-MM-DD" -> Set of "HH:MM" strings (or empty set for date-only)
+    selectedSlots: new Map(), // key -> Set of "HH:MM" strings (or empty set for date-only)
     currentMonth: new Date().getMonth(),
     currentYear: new Date().getFullYear(),
     pollType: "datetime",
+    scheduleMode: "specific", // "specific" or "weekly"
   };
 
   // --- DOM refs ---
@@ -23,6 +24,7 @@
   const durationSelect = document.getElementById("duration");
   const customDurationDiv = document.getElementById("custom-duration");
   const customDurationInput = document.getElementById("custom-duration-input");
+  const weekdayContainer = document.getElementById("weekday-container");
   const createBtn = document.getElementById("create-btn");
   const form = document.getElementById("create-poll-form");
 
@@ -96,6 +98,65 @@
           }
         }
         renderSelectedSlots();
+      });
+    }
+  }
+
+  // --- Schedule mode toggle ---
+  function initScheduleModeToggle() {
+    var radios = document.querySelectorAll('input[name="schedule_mode"]');
+    for (var radio of radios) {
+      radio.addEventListener("change", function () {
+        state.scheduleMode = this.value;
+        // Clear selections when switching modes
+        state.selectedSlots.clear();
+
+        if (this.value === "weekly") {
+          calendarContainer.style.display = "none";
+          if (weekdayContainer) weekdayContainer.style.display = "";
+          renderWeekdayPicker();
+        } else {
+          calendarContainer.style.display = "";
+          if (weekdayContainer) weekdayContainer.style.display = "none";
+          renderCalendar();
+        }
+        renderSelectedSlots();
+      });
+    }
+  }
+
+  // --- Weekday picker ---
+  var WEEKDAYS = [
+    { key: "monday", short: "Mon", full: "Monday" },
+    { key: "tuesday", short: "Tue", full: "Tuesday" },
+    { key: "wednesday", short: "Wed", full: "Wednesday" },
+    { key: "thursday", short: "Thu", full: "Thursday" },
+    { key: "friday", short: "Fri", full: "Friday" },
+    { key: "saturday", short: "Sat", full: "Saturday" },
+    { key: "sunday", short: "Sun", full: "Sunday" },
+  ];
+
+  function renderWeekdayPicker() {
+    if (!weekdayContainer) return;
+
+    var html = '<div class="weekday-picker" role="group" aria-label="Select days of the week">';
+    for (var i = 0; i < WEEKDAYS.length; i++) {
+      var day = WEEKDAYS[i];
+      var isSelected = state.selectedSlots.has(day.key);
+      var cls = "weekday-btn" + (isSelected ? " weekday-selected" : "");
+      html += '<button type="button" class="' + cls + '" data-day="' + day.key + '"';
+      html += ' aria-pressed="' + isSelected + '"';
+      html += ' aria-label="' + day.full + (isSelected ? ", selected" : "") + '">';
+      html += day.short;
+      html += "</button>";
+    }
+    html += "</div>";
+    weekdayContainer.innerHTML = html;
+
+    for (var btn of weekdayContainer.querySelectorAll(".weekday-btn")) {
+      btn.addEventListener("click", function () {
+        toggleDate(this.dataset.day);
+        renderWeekdayPicker();
       });
     }
   }
@@ -269,18 +330,29 @@
 
     createBtn.disabled = false;
 
-    // Sort dates
-    const sortedDates = [...state.selectedSlots.keys()].sort();
+    // Sort keys — weekdays by canonical order, dates alphabetically
+    var WEEKDAY_ORDER = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
+    var sortedDates = [...state.selectedSlots.keys()].sort(function (a, b) {
+      if (state.scheduleMode === "weekly") {
+        return (WEEKDAY_ORDER[a] ?? 0) - (WEEKDAY_ORDER[b] ?? 0);
+      }
+      return a.localeCompare(b);
+    });
 
-    let html = '<div class="slot-list">';
-    for (const dateStr of sortedDates) {
-      const times = state.selectedSlots.get(dateStr);
-      const dateDisplay = new Date(dateStr + "T12:00:00Z").toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      });
+    var html = '<div class="slot-list">';
+    for (var dateStr of sortedDates) {
+      var times = state.selectedSlots.get(dateStr);
+      var dateDisplay;
+      if (state.scheduleMode === "weekly") {
+        dateDisplay = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+      } else {
+        dateDisplay = new Date(dateStr + "T12:00:00Z").toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+      }
 
       html += '<div class="slot-item" data-date="' + dateStr + '">';
       html += '<span class="slot-date">' + dateDisplay + "</span>";
@@ -428,6 +500,7 @@
 
   // --- Init ---
   initTimezones();
+  initScheduleModeToggle();
   initPollTypeToggle();
   initDuration();
   renderCalendar();

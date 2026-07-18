@@ -24,6 +24,7 @@ export interface Poll {
   description: string | null;
   link: string | null;
   timezone: string;
+  schedule_mode: "specific" | "weekly";
   poll_type: "date" | "datetime";
   duration: number | null;
   responses_hidden: number;
