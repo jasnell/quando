@@ -67,6 +67,14 @@ a:hover {
   align-items: center;
   gap: 1rem;
 }
+.gh-link {
+  color: #6b7280;
+  display: inline-flex;
+  transition: color 0.15s;
+}
+.gh-link:hover {
+  color: #1a1a2e;
+}
 .user-menu {
   display: flex;
   align-items: center;
