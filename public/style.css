@@ -992,6 +992,22 @@ thead .name-col {
 .toggle-btn:hover {
   transform: scale(1.05);
 }
+.kbd-hint {
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+.kbd-hint kbd {
+  display: inline-block;
+  padding: 0.1rem 0.375rem;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  background: var(--surface);
+  min-width: 1.25rem;
+  text-align: center;
+}
 
 /* --- List view: results --- */
 .slot-card-list {

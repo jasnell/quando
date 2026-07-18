@@ -76,10 +76,111 @@
     });
   }
 
-  // --- List view: explicit yes/maybe/no buttons ---
+  // --- Keyboard navigation for table view ---
+  var toggleBtnsAll = document.querySelectorAll(".respond-input .toggle-btn");
+  if (toggleBtnsAll.length > 0) {
+    // Build ordered array for arrow-key navigation
+    var btnArray = Array.prototype.slice.call(toggleBtnsAll);
+
+    function focusBtn(idx) {
+      if (idx < 0 || idx >= btnArray.length) return;
+      // Roving tabindex: deactivate old, activate new
+      for (var i = 0; i < btnArray.length; i++) {
+        btnArray[i].setAttribute("tabindex", "-1");
+      }
+      btnArray[idx].setAttribute("tabindex", "0");
+      btnArray[idx].focus();
+    }
+
+    for (var b = 0; b < btnArray.length; b++) {
+      btnArray[b].addEventListener("keydown", function (e) {
+        var idx = btnArray.indexOf(this);
+        switch (e.key) {
+          case "ArrowRight":
+          case "ArrowDown":
+            e.preventDefault();
+            focusBtn(idx + 1);
+            break;
+          case "ArrowLeft":
+          case "ArrowUp":
+            e.preventDefault();
+            focusBtn(idx - 1);
+            break;
+          case "Home":
+            e.preventDefault();
+            focusBtn(0);
+            break;
+          case "End":
+            e.preventDefault();
+            focusBtn(btnArray.length - 1);
+            break;
+          case "y":
+          case "Y":
+            e.preventDefault();
+            syncSlotValue(this.dataset.slotId, "yes");
+            break;
+          case "n":
+          case "N":
+            e.preventDefault();
+            syncSlotValue(this.dataset.slotId, "no");
+            break;
+          case "?":
+          case "m":
+          case "M":
+            e.preventDefault();
+            syncSlotValue(this.dataset.slotId, "maybe");
+            break;
+        }
+      });
+    }
+  }
+
+  // --- List view: explicit yes/maybe/no buttons + keyboard nav ---
+  var respondCards = document.querySelectorAll(".respond-card[data-slot-id]");
+
+  function focusCard(idx) {
+    if (idx < 0 || idx >= respondCards.length) return;
+    // Focus the active (or first) button in the target card
+    var active = respondCards[idx].querySelector(".respond-opt.active") || respondCards[idx].querySelector(".respond-opt");
+    if (active) active.focus();
+  }
+
   for (var optBtn of document.querySelectorAll(".respond-opt")) {
     optBtn.addEventListener("click", function () {
       syncSlotValue(this.dataset.slotId, this.dataset.opt);
+    });
+
+    optBtn.addEventListener("keydown", function (e) {
+      var card = this.closest(".respond-card[data-slot-id]");
+      var slotId = card ? card.dataset.slotId : this.dataset.slotId;
+      var cardIdx = Array.prototype.indexOf.call(respondCards, card);
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          focusCard(cardIdx + 1);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          focusCard(cardIdx - 1);
+          break;
+        case "y":
+        case "Y":
+          e.preventDefault();
+          syncSlotValue(slotId, "yes");
+          break;
+        case "n":
+        case "N":
+          e.preventDefault();
+          syncSlotValue(slotId, "no");
+          break;
+        case "?":
+        case "m":
+        case "M":
+          e.preventDefault();
+          syncSlotValue(slotId, "maybe");
+          break;
+      }
     });
   }
 

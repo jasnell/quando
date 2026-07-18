@@ -316,14 +316,15 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
             {/* Table view */}
             <div class="view-table">
               <div class="grid-scroll">
-                <table class="response-grid respond-input" data-timezone={poll.timezone} data-poll-type={poll.poll_type} data-duration={poll.duration ?? ""}>
+                <table class="response-grid respond-input" role="grid" aria-label="Response grid — use arrow keys to navigate, Y for yes, N for no, ? for maybe" data-timezone={poll.timezone} data-poll-type={poll.poll_type} data-duration={poll.duration ?? ""}>
                   <thead>
                     <tr>
-                      {poll.slots.map((slot) => (
+                      {poll.slots.map((slot, idx) => (
                         <th
                           class="slot-col"
                           data-date={slot.date}
                           data-time={slot.start_time ?? ""}
+                          id={`slot-hdr-${slot.id}`}
                         >
                           <div class="slot-header">
                             {formatSlotHeader(slot.date, slot.start_time, poll.timezone, poll.duration)}
@@ -335,16 +336,19 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                   </thead>
                   <tbody>
                     <tr>
-                      {poll.slots.map((slot) => {
+                      {poll.slots.map((slot, idx) => {
                         const currentVal = userResponse?.values[slot.id] ?? "no";
                         return (
-                          <td class="input-cell">
+                          <td class="input-cell" role="gridcell">
                             <button
                               type="button"
                               class={`toggle-btn value-${currentVal}`}
                               data-slot-id={slot.id}
+                              data-slot-idx={idx}
                               data-value={currentVal}
                               aria-label={`${formatSlotHeader(slot.date, slot.start_time, poll.timezone, poll.duration)}: ${currentVal}`}
+                              aria-describedby={`slot-hdr-${slot.id}`}
+                              tabindex={idx === 0 ? 0 : -1}
                             >
                               {currentVal === "yes" ? "\u2713" : currentVal === "maybe" ? "?" : "\u2717"}
                             </button>
@@ -355,6 +359,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                     </tr>
                   </tbody>
                 </table>
+                <p class="kbd-hint muted"><kbd>&#8592;</kbd><kbd>&#8594;</kbd> navigate &middot; <kbd>Y</kbd> yes &middot; <kbd>N</kbd> no &middot; <kbd>?</kbd> maybe</p>
               </div>
             </div>
 
@@ -368,6 +373,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                       class="respond-card"
                       data-date={slot.date}
                       data-time={slot.start_time ?? ""}
+                      data-slot-id={slot.id}
                     >
                       <div class="respond-card-time">
                         <div class="slot-header">
@@ -408,6 +414,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                   );
                 })}
               </div>
+              <p class="kbd-hint muted"><kbd>&#8593;</kbd><kbd>&#8595;</kbd> navigate &middot; <kbd>Y</kbd> yes &middot; <kbd>N</kbd> no &middot; <kbd>?</kbd> maybe</p>
             </div>
 
             <div class="form-group mt-1">

@@ -118,11 +118,18 @@ export async function updatePoll(
     .run();
 }
 
-export async function listPollsByCreator(db: D1Database, githubId: string): Promise<Poll[]> {
+export async function listPollsByCreator(db: D1Database, githubId: string): Promise<(Poll & { response_count: number })[]> {
   const { results } = await db
-    .prepare("SELECT * FROM polls WHERE creator_github_id = ? ORDER BY created_at DESC")
+    .prepare(
+      `SELECT p.*, COUNT(r.id) as response_count
+       FROM polls p
+       LEFT JOIN responses r ON r.poll_id = p.id
+       WHERE p.creator_github_id = ?
+       GROUP BY p.id
+       ORDER BY p.created_at DESC`
+    )
     .bind(githubId)
-    .all<Poll>();
+    .all<Poll & { response_count: number }>();
   return results;
 }
 

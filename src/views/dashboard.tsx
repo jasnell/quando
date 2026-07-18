@@ -7,7 +7,7 @@ import { Stats } from "./stats";
 interface DashboardProps {
   session: Session;
   csrfToken: string;
-  polls: Poll[];
+  polls: (Poll & { response_count: number })[];
   respondedPolls: Poll[];
   stats: SiteStats;
   apiTokens: ApiToken[];
@@ -48,6 +48,7 @@ export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respo
                   year: "numeric",
                 })}
                 {" "}&middot; {poll.timezone}
+                {" "}&middot; {poll.response_count} response{poll.response_count !== 1 ? "s" : ""}
               </p>
               {poll.description && (
                 <p class="poll-card-desc">
