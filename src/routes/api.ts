@@ -183,6 +183,7 @@ api.post("/polls/:id/respond", async (c) => {
   const body = await c.req.json<{
     values: Record<string, "yes" | "no" | "maybe">;
     comment?: string;
+    timezone?: string;
   }>();
 
   // values is { slot_id: "yes"|"no"|"maybe" }
@@ -199,8 +200,9 @@ api.post("/polls/:id/respond", async (c) => {
   if (comment && comment.length > 500) {
     comment = comment.slice(0, 500);
   }
+  const timezone = body.timezone?.trim() || null;
 
-  await db.upsertResponse(c.env.DB, pollId, user.github_id, user.github_login, slotValues, comment);
+  await db.upsertResponse(c.env.DB, pollId, user.github_id, user.github_login, slotValues, comment, timezone);
 
   const userResponse = await db.getUserResponse(c.env.DB, pollId, user.github_id);
   return c.json({ response: userResponse });

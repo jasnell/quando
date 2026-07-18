@@ -222,6 +222,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                    <tr>
                     <td class="name-col">
                       <span class="respondent-name">@{r.github_login}</span>
+                      {r.timezone && <span class="respondent-tz" title={r.timezone.replace(/_/g, " ")}>{r.timezone.replace(/_/g, " ").replace(/^.*\//, "")}</span>}
                       {r.comment && <div class="respondent-comment" title={r.comment}>{r.comment}</div>}
                     </td>
                     {poll.slots.map((slot) => {
@@ -282,7 +283,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                     {responses.map((r) => {
                       const val = r.values[slot.id] ?? "no";
                       return (
-                        <span class={`respondent-chip value-${val}`} title={r.comment ?? undefined}>
+                        <span class={`respondent-chip value-${val}`} title={r.timezone ? `${r.timezone.replace(/_/g, " ")}${r.comment ? " — " + r.comment : ""}` : (r.comment ?? undefined)}>
                           <ValueIcon value={val} />{" "}
                           @{r.github_login}
                         </span>
@@ -311,6 +312,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
           <h2>{userResponse ? `Your response (@${session.github_login})` : `Respond (@${session.github_login})`}</h2>
           <form method="post" action={`/p/${poll.id}/respond`} id="respond-form">
             <input type="hidden" name="_csrf" value={csrfToken} />
+            <input type="hidden" name="respondent_timezone" id="respondent-timezone" value="" />
             {/* Table view */}
             <div class="view-table">
               <div class="grid-scroll">

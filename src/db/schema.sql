@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS responses (
   github_id    TEXT NOT NULL,
   github_login TEXT NOT NULL,
   comment      TEXT,
+  timezone     TEXT,
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

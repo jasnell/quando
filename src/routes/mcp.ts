@@ -96,6 +96,7 @@ const TOOLS = [
           additionalProperties: { type: "string", enum: ["yes", "no", "maybe"] },
         },
         comment: { type: "string", description: "Optional note (max 500 chars)" },
+        timezone: { type: "string", description: "Responder's IANA timezone (e.g. America/New_York). Optional." },
       },
       required: ["poll_id", "values"],
     },
@@ -248,8 +249,9 @@ async function executeTool(
 
         let comment = (args.comment as string)?.trim() || null;
         if (comment && comment.length > 500) comment = comment.slice(0, 500);
+        const respTz = (args.timezone as string)?.trim() || null;
 
-        await db.upsertResponse(dbBinding, args.poll_id as string, user.github_id, user.github_login, slotValues, comment);
+        await db.upsertResponse(dbBinding, args.poll_id as string, user.github_id, user.github_login, slotValues, comment, respTz);
         result = await db.getUserResponse(dbBinding, args.poll_id as string, user.github_id);
         break;
       }

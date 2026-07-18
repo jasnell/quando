@@ -166,6 +166,10 @@ const TOOLS = [
           type: "string",
           description: "Optional note (max 500 chars)",
         },
+        timezone: {
+          type: "string",
+          description: "Responder's IANA timezone (e.g. America/New_York). Optional.",
+        },
       },
       required: ["poll_id", "values"],
     },
@@ -265,6 +269,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         result = await api("POST", `/polls/${args.poll_id}/respond`, {
           values: args.values,
           comment: args.comment,
+          timezone: args.timezone,
         });
         break;
 

@@ -809,6 +809,15 @@ select.input {
   color: var(--text-muted);
   margin-bottom: 0.75rem;
 }
+.respondent-tz {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 0.25rem;
+}
+.respondent-tz::before {
+  content: "\00b7 ";
+}
 .respondent-comment {
   font-size: 0.6875rem;
   color: var(--text-muted);

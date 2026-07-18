@@ -190,7 +190,8 @@ export async function upsertResponse(
   githubId: string,
   githubLogin: string,
   slotValues: { slot_id: number; value: "yes" | "no" | "maybe" }[],
-  comment: string | null
+  comment: string | null,
+  timezone: string | null = null
 ): Promise<void> {
   // Check for existing response
   const existing = await db
@@ -204,11 +205,11 @@ export async function upsertResponse(
 
   if (existing) {
     responseId = existing.id;
-    // Update timestamp
+    // Update timestamp and timezone
     stmts.push(
       db
-        .prepare("UPDATE responses SET github_login = ?, comment = ?, updated_at = datetime('now') WHERE id = ?")
-        .bind(githubLogin, comment, responseId)
+        .prepare("UPDATE responses SET github_login = ?, comment = ?, timezone = ?, updated_at = datetime('now') WHERE id = ?")
+        .bind(githubLogin, comment, timezone, responseId)
     );
     // Delete old values
     stmts.push(db.prepare("DELETE FROM response_values WHERE response_id = ?").bind(responseId));
@@ -216,9 +217,9 @@ export async function upsertResponse(
     // We need to insert and get the ID back - do this outside the batch
     const result = await db
       .prepare(
-        "INSERT INTO responses (poll_id, github_id, github_login, comment) VALUES (?, ?, ?, ?) RETURNING id"
+        "INSERT INTO responses (poll_id, github_id, github_login, comment, timezone) VALUES (?, ?, ?, ?, ?) RETURNING id"
        )
-      .bind(pollId, githubId, githubLogin, comment)
+      .bind(pollId, githubId, githubLogin, comment, timezone)
       .first<{ id: number }>();
     responseId = result!.id;
   }

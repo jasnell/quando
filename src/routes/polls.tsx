@@ -246,7 +246,8 @@ polls.post("/p/:id/respond", requireAuth, async (c) => {
   if (comment && comment.length > 500) {
     comment = comment.slice(0, 500);
   }
-  await db.upsertResponse(c.env.DB, pollId, session.github_id, session.github_login, slotValues, comment);
+  const respondentTz = (form.get("respondent_timezone") as string | null)?.trim() || null;
+  await db.upsertResponse(c.env.DB, pollId, session.github_id, session.github_login, slotValues, comment, respondentTz);
 
   return c.redirect(`/p/${pollId}`);
 });

@@ -3,6 +3,14 @@
 (function () {
   "use strict";
 
+  // --- Set respondent timezone hidden field ---
+  var tzInput = document.getElementById("respondent-timezone");
+  if (tzInput) {
+    try {
+      tzInput.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (e) {}
+  }
+
   // --- Shared: sync a slot's value across both views ---
   function syncSlotValue(slotId, value) {
     var labels = { yes: "\u2713", no: "\u2717", maybe: "?" };

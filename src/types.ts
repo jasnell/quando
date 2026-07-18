@@ -48,6 +48,7 @@ export interface Response {
   github_id: string;
   github_login: string;
   comment: string | null;
+  timezone: string | null;
   created_at: string;
   updated_at: string;
 }
