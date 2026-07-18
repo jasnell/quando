@@ -111,6 +111,118 @@ export function isPollExpired(
   return Date.now() > latestMs;
 }
 
+// Generate an iCalendar (.ics) file for a chosen poll slot
+export function generateICS(poll: {
+  id: string;
+  title: string;
+  description: string | null;
+  link: string | null;
+  timezone: string;
+  poll_type: "date" | "datetime";
+  duration: number | null;
+  creator_login: string;
+}, slot: { date: string; start_time: string | null }): string {
+  const lines: string[] = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Quando//quando.jasnell.workers.dev//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${poll.id}@quando.jasnell.workers.dev`,
+    `DTSTAMP:${formatICSDateUTC(new Date())}`,
+  ];
+
+  if (poll.poll_type === "date" || !slot.start_time) {
+    // All-day event: VALUE=DATE format YYYYMMDD
+    const dateVal = slot.date.replace(/-/g, "");
+    lines.push(`DTSTART;VALUE=DATE:${dateVal}`);
+    // All-day events use DTEND as the next day (exclusive)
+    const nextDay = new Date(slot.date + "T12:00:00Z");
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const endVal = nextDay.toISOString().slice(0, 10).replace(/-/g, "");
+    lines.push(`DTEND;VALUE=DATE:${endVal}`);
+  } else {
+    // Timed event: convert wall-clock time in poll timezone to UTC
+    const utcStart = wallClockToUTC(slot.date, slot.start_time, poll.timezone);
+    lines.push(`DTSTART:${formatICSDateUTC(utcStart)}`);
+    const durationMin = poll.duration ?? 60;
+    const utcEnd = new Date(utcStart.getTime() + durationMin * 60_000);
+    lines.push(`DTEND:${formatICSDateUTC(utcEnd)}`);
+  }
+
+  lines.push(`SUMMARY:${escapeICSText(poll.title)}`);
+
+  const descParts: string[] = [];
+  if (poll.description) descParts.push(poll.description);
+  descParts.push(`Poll: https://quando.jasnell.workers.dev/p/${poll.id}`);
+  if (poll.link) descParts.push(poll.link);
+  lines.push(`DESCRIPTION:${escapeICSText(descParts.join("\\n"))}`);
+
+  lines.push(`URL:https://quando.jasnell.workers.dev/p/${poll.id}`);
+  lines.push(`ORGANIZER;CN=${poll.creator_login}:MAILTO:noreply@quando.jasnell.workers.dev`);
+  lines.push("STATUS:CONFIRMED");
+  lines.push("END:VEVENT");
+  lines.push("END:VCALENDAR");
+
+  return foldICSLines(lines).join("\r\n") + "\r\n";
+}
+
+// Convert wall-clock time in a timezone to a UTC Date
+function wallClockToUTC(isoDate: string, time: string, timezone: string): Date {
+  const utcGuess = new Date(`${isoDate}T${time}:00Z`);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(utcGuess);
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  const tzWall = new Date(
+    `${get("year")}-${get("month")}-${get("day")}T${String(get("hour")).padStart(2, "0")}:${get("minute")}:${get("second")}Z`
+  );
+  const offset = tzWall.getTime() - utcGuess.getTime();
+  return new Date(utcGuess.getTime() - offset);
+}
+
+// Format a Date as ICS UTC datetime: YYYYMMDDTHHmmSSZ
+function formatICSDateUTC(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+// Escape special characters in ICS text values
+function escapeICSText(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
+}
+
+// Fold long lines per RFC 5545 (max 75 octets per line)
+function foldICSLines(lines: string[]): string[] {
+  const folded: string[] = [];
+  for (const line of lines) {
+    if (line.length <= 75) {
+      folded.push(line);
+    } else {
+      folded.push(line.slice(0, 75));
+      let rest = line.slice(75);
+      while (rest.length > 0) {
+        // Continuation lines start with a space, so 74 chars of content
+        folded.push(" " + rest.slice(0, 74));
+        rest = rest.slice(74);
+      }
+    }
+  }
+  return folded;
+}
+
 // Generate a CSRF token
 export function generateToken(): string {
   const bytes = new Uint8Array(32);

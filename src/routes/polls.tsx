@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env, Session } from "../types";
 import { requireAuth } from "../auth";
-import { isPollExpired } from "../utils";
+import { isPollExpired, generateICS } from "../utils";
 import * as db from "../db/queries";
 import { PollView } from "../views/poll";
 import { PollNew } from "../views/poll-new";
@@ -248,6 +248,40 @@ polls.post("/p/:id/choose", requireAuth, async (c) => {
 
   await db.chooseSlot(c.env.DB, pollId, slotId);
   return c.redirect(`/p/${pollId}/admin`);
+});
+
+// --- Calendar invite (.ics) download ---
+
+polls.get("/p/:id/ics", requireAuth, async (c) => {
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPollWithSlots(c.env.DB, pollId);
+  if (!poll) {
+    return c.text("Poll not found", 404);
+  }
+
+  if (!poll.chosen_slot) {
+    return c.text("No time has been chosen yet", 400);
+  }
+
+  // Weekly polls don't have concrete dates — skip .ics
+  if (poll.schedule_mode === "weekly") {
+    return c.text("Calendar invites are not available for weekly polls", 400);
+  }
+
+  const slot = poll.slots.find((s) => s.id === poll.chosen_slot);
+  if (!slot) {
+    return c.text("Chosen slot not found", 400);
+  }
+
+  const ics = generateICS(poll, slot);
+
+  return new Response(ics, {
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Content-Disposition": `attachment; filename="quando-${pollId.slice(0, 8)}.ics"`,
+    },
+  });
 });
 
 polls.post("/p/:id/delete", requireAuth, async (c) => {

@@ -129,6 +129,11 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
                 return slot ? formatSlotHeader(slot.date, slot.start_time, poll.timezone, poll.duration) : "—";
               })()}
             </strong>
+            {poll.schedule_mode !== "weekly" && (
+              <a href={`/p/${poll.id}/ics`} class="btn btn-sm btn-outline chosen-ics-btn" download>
+                Download .ics
+              </a>
+            )}
           </div>
         )}
         {isCreator && (
