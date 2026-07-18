@@ -5,6 +5,7 @@ import { auth } from "./routes/auth";
 import { polls } from "./routes/polls";
 import { dashboard } from "./routes/dashboard";
 import { api } from "./routes/api";
+import { mcp as mcpRoute } from "./routes/mcp";
 import { Landing } from "./views/landing";
 import { Privacy } from "./views/privacy";
 import { getSiteStats } from "./db/queries";
@@ -15,8 +16,8 @@ const app = new Hono<AppEnv>();
 
 // Security headers for HTML pages (generate per-request nonce for inline scripts)
 app.use("*", async (c, next) => {
-  // Skip CSP/session overhead for API routes — they have their own Bearer auth
-  if (c.req.path.startsWith("/api/")) {
+  // Skip CSP/session overhead for API and MCP routes — they have their own Bearer auth
+  if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/mcp")) {
     await next();
     c.header("X-Content-Type-Options", "nosniff");
     return;
@@ -38,7 +39,7 @@ app.use("*", async (c, next) => {
 
 // Session middleware runs on all non-API routes
 app.use("*", async (c, next) => {
-  if (c.req.path.startsWith("/api/")) {
+  if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/mcp")) {
     return next();
   }
   return sessionMiddleware(c, next);
@@ -69,6 +70,7 @@ app.get("/privacy", (c) => {
 // Mount route groups
 app.route("/auth", auth);
 app.route("/api", api);
+app.route("/mcp", mcpRoute);
 app.route("/", polls);
 app.route("/", dashboard);
 
