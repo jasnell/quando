@@ -7,11 +7,12 @@ interface DashboardProps {
   session: Session;
   csrfToken: string;
   polls: Poll[];
+  respondedPolls: Poll[];
   stats: SiteStats;
   cspNonce?: string;
 }
 
-export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, stats, cspNonce }) => {
+export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, respondedPolls, stats, cspNonce }) => {
   return (
     <Layout title="My polls" session={session} csrfToken={csrfToken} cspNonce={cspNonce}>
       <div class="page-header">
@@ -55,6 +56,41 @@ export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, stats
             </a>
           ))}
         </div>
+      )}
+
+      {respondedPolls.length > 0 && (
+        <>
+          <div class="page-header" style="padding-top: 1rem">
+            <h2>Polls I've responded to</h2>
+          </div>
+          <div class="poll-list">
+            {respondedPolls.map((poll) => (
+              <a href={`/p/${poll.id}`} class="poll-card">
+                <div class="poll-card-header">
+                  <h3>{poll.title}</h3>
+                  {poll.closed_at && <span class="badge badge-closed">Closed</span>}
+                  {poll.chosen_slot && <span class="badge badge-chosen">Time chosen</span>}
+                </div>
+                <p class="poll-card-meta">
+                  by @{poll.creator_login}
+                  {" "}&middot;{" "}
+                  {new Date(poll.created_at + "Z").toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+                {poll.description && (
+                  <p class="poll-card-desc">
+                    {poll.description.length > 120
+                      ? poll.description.slice(0, 120) + "..."
+                      : poll.description}
+                  </p>
+                )}
+              </a>
+            ))}
+          </div>
+        </>
       )}
 
       <Stats stats={stats} />

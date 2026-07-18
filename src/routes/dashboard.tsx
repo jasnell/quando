@@ -11,12 +11,13 @@ const dashboard = new Hono<DashEnv>();
 dashboard.get("/dashboard", requireAuth, async (c) => {
   const session = c.get("session")!;
   const csrfToken = c.get("csrfToken");
-  const [polls, stats] = await Promise.all([
+  const cspNonce = c.get("cspNonce");
+  const [polls, respondedPolls, stats] = await Promise.all([
     db.listPollsByCreator(c.env.DB, session.github_id),
+    db.listPollsRespondedTo(c.env.DB, session.github_id),
     db.getSiteStats(c.env.DB),
   ]);
-  const cspNonce = c.get("cspNonce");
-  return c.html(<Dashboard session={session} csrfToken={csrfToken} polls={polls} stats={stats} cspNonce={cspNonce} />);
+  return c.html(<Dashboard session={session} csrfToken={csrfToken} polls={polls} respondedPolls={respondedPolls} stats={stats} cspNonce={cspNonce} />);
 });
 
 dashboard.get("/account/export", requireAuth, async (c) => {

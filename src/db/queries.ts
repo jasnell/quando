@@ -237,6 +237,19 @@ export async function upsertResponse(
   }
 }
 
+export async function listPollsRespondedTo(db: D1Database, githubId: string): Promise<Poll[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT p.* FROM polls p
+       JOIN responses r ON r.poll_id = p.id
+       WHERE r.github_id = ?
+       ORDER BY r.updated_at DESC`
+    )
+    .bind(githubId)
+    .all<Poll>();
+  return results;
+}
+
 // --- Rate limits ---
 
 export async function getCreatorLimits(
