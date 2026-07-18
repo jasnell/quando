@@ -95,10 +95,17 @@ export async function deletePoll(db: D1Database, id: string): Promise<void> {
 export async function updatePoll(
   db: D1Database,
   id: string,
-  fields: { title?: string; description?: string | null }
+  fields: {
+    title?: string;
+    description?: string | null;
+    link?: string | null;
+    duration?: number | null;
+    responses_hidden?: boolean;
+    closes_at?: string | null;
+  }
 ): Promise<void> {
   const sets: string[] = [];
-  const values: (string | null)[] = [];
+  const values: (string | number | null)[] = [];
 
   if (fields.title !== undefined) {
     sets.push("title = ?");
@@ -108,6 +115,22 @@ export async function updatePoll(
     sets.push("description = ?");
     values.push(fields.description);
   }
+  if (fields.link !== undefined) {
+    sets.push("link = ?");
+    values.push(fields.link);
+  }
+  if (fields.duration !== undefined) {
+    sets.push("duration = ?");
+    values.push(fields.duration);
+  }
+  if (fields.responses_hidden !== undefined) {
+    sets.push("responses_hidden = ?");
+    values.push(fields.responses_hidden ? 1 : 0);
+  }
+  if (fields.closes_at !== undefined) {
+    sets.push("closes_at = ?");
+    values.push(fields.closes_at);
+  }
 
   if (sets.length === 0) return;
 
@@ -116,6 +139,38 @@ export async function updatePoll(
     .prepare(`UPDATE polls SET ${sets.join(", ")} WHERE id = ?`)
     .bind(...values)
     .run();
+}
+
+export async function addSlots(
+  db: D1Database,
+  pollId: string,
+  slots: { date: string; start_time: string | null }[]
+): Promise<void> {
+  if (slots.length === 0) return;
+
+  // Get the current max position
+  const max = await db
+    .prepare("SELECT MAX(position) as max_pos FROM slots WHERE poll_id = ?")
+    .bind(pollId)
+    .first<{ max_pos: number | null }>();
+  let nextPos = (max?.max_pos ?? -1) + 1;
+
+  // Sort new slots by date then time
+  const sorted = [...slots].sort((a, b) => {
+    const dateCmp = a.date.localeCompare(b.date);
+    if (dateCmp !== 0) return dateCmp;
+    return (a.start_time ?? "").localeCompare(b.start_time ?? "");
+  });
+
+  const stmts: D1PreparedStatement[] = [];
+  for (const slot of sorted) {
+    stmts.push(
+      db
+        .prepare("INSERT INTO slots (poll_id, position, date, start_time) VALUES (?, ?, ?, ?)")
+        .bind(pollId, nextPos++, slot.date, slot.start_time)
+    );
+  }
+  await db.batch(stmts);
 }
 
 export async function listPollsByCreator(db: D1Database, githubId: string): Promise<(Poll & { response_count: number })[]> {

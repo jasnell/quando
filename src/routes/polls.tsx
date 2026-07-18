@@ -7,6 +7,7 @@ import { PollView } from "../views/poll";
 import type { OgMeta } from "../views/layout";
 import { PollNew } from "../views/poll-new";
 import { PollAdmin } from "../views/poll-admin";
+import { PollEdit } from "../views/poll-edit";
 
 type PollEnv = { Bindings: Env; Variables: { session: Session | null; csrfToken: string; cspNonce: string } };
 
@@ -250,6 +251,104 @@ polls.post("/p/:id/respond", requireAuth, async (c) => {
   await db.upsertResponse(c.env.DB, pollId, session.github_id, session.github_login, slotValues, comment, respondentTz);
 
   return c.redirect(`/p/${pollId}`);
+});
+
+// --- Edit poll ---
+
+polls.get("/p/:id/edit", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const csrfToken = c.get("csrfToken");
+  const cspNonce = c.get("cspNonce");
+  const pollId = c.req.param("id") as string;
+  const success = c.req.query("saved") === "1";
+
+  const poll = await db.getPollWithSlots(c.env.DB, pollId);
+  if (!poll) return c.text("Poll not found", 404);
+  if (poll.creator_github_id !== session.github_id) return c.text("Forbidden", 403);
+
+  return c.html(<PollEdit session={session} csrfToken={csrfToken} poll={poll} cspNonce={cspNonce} success={success} />);
+});
+
+polls.post("/p/:id/edit", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPoll(c.env.DB, pollId);
+  if (!poll) return c.text("Poll not found", 404);
+  if (poll.creator_github_id !== session.github_id) return c.text("Forbidden", 403);
+
+  const form = await c.req.formData();
+
+  const title = (form.get("title") as string | null)?.trim();
+  if (!title || title.length > 200) return c.text("Title is required (max 200 characters)", 400);
+
+  const description = (form.get("description") as string | null)?.trim() || null;
+
+  let link: string | null = (form.get("link") as string | null)?.trim() || null;
+  if (link) {
+    try {
+      const url = new URL(link);
+      if (url.protocol !== "https:" && url.protocol !== "http:") return c.text("Link must be http or https", 400);
+    } catch {
+      return c.text("Invalid link URL", 400);
+    }
+  }
+
+  const responsesHidden = form.get("responses_hidden") === "1";
+
+  let closesAt: string | null = null;
+  const closesAtStr = form.get("closes_at") as string | null;
+  if (closesAtStr) {
+    const d = new Date(closesAtStr);
+    if (!isNaN(d.getTime())) {
+      closesAt = d.toISOString();
+    }
+  }
+
+  await db.updatePoll(c.env.DB, pollId, {
+    title,
+    description,
+    link,
+    responses_hidden: responsesHidden,
+    closes_at: closesAt,
+  });
+
+  return c.redirect(`/p/${pollId}/edit?saved=1`);
+});
+
+polls.post("/p/:id/slots", requireAuth, async (c) => {
+  const session = c.get("session")!;
+  const pollId = c.req.param("id") as string;
+
+  const poll = await db.getPollWithSlots(c.env.DB, pollId);
+  if (!poll) return c.text("Poll not found", 404);
+  if (poll.creator_github_id !== session.github_id) return c.text("Forbidden", 403);
+  if (poll.closed_at) return c.text("Cannot add slots to a closed poll", 400);
+
+  const form = await c.req.formData();
+
+  // Parse slot entries from form (same format as create: slot_date[] and slot_time[])
+  const slotDates = form.getAll("slot_date") as string[];
+  const slotTimes = form.getAll("slot_time") as string[];
+  const pollType = poll.poll_type;
+
+  const slots: { date: string; start_time: string | null }[] = [];
+  for (let i = 0; i < slotDates.length; i++) {
+    const date = slotDates[i]!.trim();
+    if (!date) continue;
+    const time = pollType === "datetime" ? (slotTimes[i]?.trim() || null) : null;
+    slots.push({ date, start_time: time });
+  }
+
+  if (slots.length === 0) return c.text("No slots to add", 400);
+  if (slots.length > 50) return c.text("Maximum 50 slots at a time", 400);
+
+  // Check total slot count
+  if (poll.slots.length + slots.length > 100) return c.text("Maximum 100 total slots per poll", 400);
+
+  await db.addSlots(c.env.DB, pollId, slots);
+
+  return c.redirect(`/p/${pollId}/edit?saved=1`);
 });
 
 // --- Admin ---

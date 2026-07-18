@@ -26,12 +26,20 @@
   const customDurationInput = document.getElementById("custom-duration-input");
   const weekdayContainer = document.getElementById("weekday-container");
   const createBtn = document.getElementById("create-btn");
-  const form = document.getElementById("create-poll-form");
+  const form = document.getElementById("create-poll-form") || document.getElementById("add-slots-form");
 
-  if (!calendarContainer || !timezoneSelect || !form) return;
+  if (!calendarContainer || !form) return;
+
+  // On the edit page, read fixed schedule mode and poll type from the form's data attributes
+  var editMode = form.id === "add-slots-form";
+  if (editMode) {
+    state.scheduleMode = form.dataset.scheduleMode || "specific";
+    state.pollType = form.dataset.pollType || "datetime";
+  }
 
   // --- Timezone setup ---
   function initTimezones() {
+    if (!timezoneSelect) return;
     const timezones = Intl.supportedValuesOf("timeZone");
     const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -606,7 +614,11 @@
   initScheduleModeToggle();
   initPollTypeToggle();
   initDuration();
-  renderCalendar();
+  if (state.scheduleMode === "weekly") {
+    renderWeekdayPicker();
+  } else {
+    renderCalendar();
+  }
   renderSelectedSlots();
   applyTemplate();
 })();

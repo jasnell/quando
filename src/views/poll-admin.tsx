@@ -43,9 +43,15 @@ export const PollAdmin: FC<PollAdminProps> = ({ session, csrfToken, poll, respon
     <Layout title={`Manage: ${poll.title}`} session={session} csrfToken={csrfToken} cspNonce={cspNonce}>
       <div class="page-header">
         <h1>Manage poll</h1>
-        <a href={`/p/${poll.id}`} class="btn btn-sm btn-outline">
-          View poll
-        </a>
+        <div>
+          <a href={`/p/${poll.id}/edit`} class="btn btn-sm btn-outline">
+            Edit poll
+          </a>
+          {" "}
+          <a href={`/p/${poll.id}`} class="btn btn-sm btn-outline">
+            View poll
+          </a>
+        </div>
       </div>
 
       <div class="admin-info">

@@ -175,6 +175,47 @@ const TOOLS = [
     },
   },
   {
+    name: "edit_poll",
+    description:
+      "Edit a poll's metadata (title, description, link, deadline, response visibility). Cannot change timezone, duration, or existing slots.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        poll_id: { type: "string", description: "The poll UUID" },
+        title: { type: "string", description: "New title (max 200 chars)" },
+        description: { type: "string", description: "New description, or null to clear" },
+        link: { type: "string", description: "New link URL, or null to clear" },
+        responses_hidden: { type: "boolean", description: "Hide responses until poll is closed" },
+        closes_at: { type: "string", description: "Response deadline as ISO 8601 datetime, or null to remove" },
+      },
+      required: ["poll_id"],
+    },
+  },
+  {
+    name: "add_slots",
+    description:
+      "Add new time slots to an existing poll. Existing slots cannot be removed or changed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        poll_id: { type: "string", description: "The poll UUID" },
+        slots: {
+          type: "array",
+          description: "New time slots to add.",
+          items: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Date (YYYY-MM-DD) or weekday name" },
+              start_time: { type: "string", description: "Start time HH:MM (for datetime polls)" },
+            },
+            required: ["date"],
+          },
+        },
+      },
+      required: ["poll_id", "slots"],
+    },
+  },
+  {
     name: "close_poll",
     description: "Close a poll you created. No more responses will be accepted.",
     inputSchema: {
@@ -270,6 +311,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           values: args.values,
           comment: args.comment,
           timezone: args.timezone,
+        });
+        break;
+
+      case "edit_poll":
+        result = await api("PATCH", `/polls/${args.poll_id}`, {
+          title: args.title,
+          description: args.description,
+          link: args.link,
+          responses_hidden: args.responses_hidden,
+          closes_at: args.closes_at,
+        });
+        break;
+
+      case "add_slots":
+        result = await api("POST", `/polls/${args.poll_id}/slots`, {
+          slots: args.slots,
         });
         break;
 

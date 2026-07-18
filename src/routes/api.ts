@@ -208,6 +208,81 @@ api.post("/polls/:id/respond", async (c) => {
   return c.json({ response: userResponse });
 });
 
+// --- Edit poll metadata ---
+api.patch("/polls/:id", async (c) => {
+  const user = c.get("apiUser");
+  const pollId = c.req.param("id");
+
+  const poll = await db.getPoll(c.env.DB, pollId);
+  if (!poll) return c.json({ error: "Poll not found" }, 404);
+  if (poll.creator_github_id !== user.github_id) return c.json({ error: "Forbidden" }, 403);
+
+  const body = await c.req.json<{
+    title?: string;
+    description?: string | null;
+    link?: string | null;
+    responses_hidden?: boolean;
+    closes_at?: string | null;
+  }>();
+
+  if (body.title !== undefined && (!body.title.trim() || body.title.length > 200)) {
+    return c.json({ error: "Title is required (max 200 characters)" }, 400);
+  }
+  if (body.link !== undefined && body.link !== null && body.link.trim()) {
+    try {
+      const url = new URL(body.link);
+      if (url.protocol !== "https:" && url.protocol !== "http:") return c.json({ error: "Link must be http or https" }, 400);
+    } catch {
+      return c.json({ error: "Invalid link URL" }, 400);
+    }
+  }
+  if (body.closes_at !== undefined && body.closes_at !== null) {
+    const d = new Date(body.closes_at);
+    if (isNaN(d.getTime())) return c.json({ error: "Invalid closes_at date" }, 400);
+    body.closes_at = d.toISOString();
+  }
+
+  await db.updatePoll(c.env.DB, pollId, {
+    title: body.title?.trim(),
+    description: body.description !== undefined ? (body.description?.trim() || null) : undefined,
+    link: body.link !== undefined ? (body.link?.trim() || null) : undefined,
+    responses_hidden: body.responses_hidden,
+    closes_at: body.closes_at,
+  });
+
+  const updated = await db.getPollWithSlots(c.env.DB, pollId);
+  return c.json({ poll: updated });
+});
+
+// --- Add slots ---
+api.post("/polls/:id/slots", async (c) => {
+  const user = c.get("apiUser");
+  const pollId = c.req.param("id");
+
+  const poll = await db.getPollWithSlots(c.env.DB, pollId);
+  if (!poll) return c.json({ error: "Poll not found" }, 404);
+  if (poll.creator_github_id !== user.github_id) return c.json({ error: "Forbidden" }, 403);
+  if (poll.closed_at) return c.json({ error: "Cannot add slots to a closed poll" }, 400);
+
+  const body = await c.req.json<{
+    slots: { date: string; start_time?: string }[];
+  }>();
+
+  if (!body.slots?.length) return c.json({ error: "At least one slot is required" }, 400);
+  if (body.slots.length > 50) return c.json({ error: "Maximum 50 slots at a time" }, 400);
+  if (poll.slots.length + body.slots.length > 100) return c.json({ error: "Maximum 100 total slots per poll" }, 400);
+
+  const slots = body.slots.map((s) => ({
+    date: s.date,
+    start_time: poll.poll_type === "datetime" ? (s.start_time ?? null) : null,
+  }));
+
+  await db.addSlots(c.env.DB, pollId, slots);
+
+  const updated = await db.getPollWithSlots(c.env.DB, pollId);
+  return c.json({ poll: updated });
+});
+
 // --- Close poll ---
 api.post("/polls/:id/close", async (c) => {
   const user = c.get("apiUser");

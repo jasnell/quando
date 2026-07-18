@@ -102,6 +102,45 @@ const TOOLS = [
     },
   },
   {
+    name: "edit_poll",
+    description: "Edit a poll's metadata (title, description, link, deadline, response visibility). Cannot change timezone, duration, or existing slots.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        poll_id: { type: "string", description: "The poll UUID" },
+        title: { type: "string", description: "New title (max 200 chars)" },
+        description: { type: "string", description: "New description, or null to clear" },
+        link: { type: "string", description: "New link URL, or null to clear" },
+        responses_hidden: { type: "boolean", description: "Hide responses until poll is closed" },
+        closes_at: { type: "string", description: "Response deadline as ISO 8601 datetime, or null to remove" },
+      },
+      required: ["poll_id"],
+    },
+  },
+  {
+    name: "add_slots",
+    description: "Add new time slots to an existing poll. Existing slots cannot be removed or changed.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        poll_id: { type: "string", description: "The poll UUID" },
+        slots: {
+          type: "array",
+          description: "New time slots to add. Each has 'date' (YYYY-MM-DD or weekday name) and optional 'start_time' (HH:MM).",
+          items: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Date (YYYY-MM-DD) or weekday name" },
+              start_time: { type: "string", description: "Start time HH:MM (for datetime polls)" },
+            },
+            required: ["date"],
+          },
+        },
+      },
+      required: ["poll_id", "slots"],
+    },
+  },
+  {
     name: "close_poll",
     description: "Close a poll you created. No more responses will be accepted.",
     inputSchema: {
@@ -253,6 +292,60 @@ async function executeTool(
 
         await db.upsertResponse(dbBinding, args.poll_id as string, user.github_id, user.github_login, slotValues, comment, respTz);
         result = await db.getUserResponse(dbBinding, args.poll_id as string, user.github_id);
+        break;
+      }
+
+      case "edit_poll": {
+        const poll = await db.getPoll(dbBinding, args.poll_id as string);
+        if (!poll) return { content: [{ type: "text", text: "Poll not found" }], isError: true };
+        if (poll.creator_github_id !== user.github_id) return { content: [{ type: "text", text: "Forbidden" }], isError: true };
+
+        if (args.title !== undefined && (!(args.title as string).trim() || (args.title as string).length > 200))
+          return { content: [{ type: "text", text: "Title required (max 200 chars)" }], isError: true };
+        if (args.link !== undefined && args.link !== null && (args.link as string).trim()) {
+          try {
+            const u = new URL(args.link as string);
+            if (u.protocol !== "https:" && u.protocol !== "http:") return { content: [{ type: "text", text: "Link must be http(s)" }], isError: true };
+          } catch { return { content: [{ type: "text", text: "Invalid link URL" }], isError: true }; }
+        }
+
+        let closesAt = args.closes_at as string | null | undefined;
+        if (closesAt !== undefined && closesAt !== null) {
+          const d = new Date(closesAt);
+          if (isNaN(d.getTime())) return { content: [{ type: "text", text: "Invalid closes_at date" }], isError: true };
+          closesAt = d.toISOString();
+        }
+
+        await db.updatePoll(dbBinding, args.poll_id as string, {
+          title: args.title !== undefined ? (args.title as string).trim() : undefined,
+          description: args.description !== undefined ? ((args.description as string)?.trim() || null) : undefined,
+          link: args.link !== undefined ? ((args.link as string)?.trim() || null) : undefined,
+          responses_hidden: args.responses_hidden as boolean | undefined,
+          closes_at: closesAt,
+        });
+
+        result = await db.getPollWithSlots(dbBinding, args.poll_id as string);
+        break;
+      }
+
+      case "add_slots": {
+        const poll = await db.getPollWithSlots(dbBinding, args.poll_id as string);
+        if (!poll) return { content: [{ type: "text", text: "Poll not found" }], isError: true };
+        if (poll.creator_github_id !== user.github_id) return { content: [{ type: "text", text: "Forbidden" }], isError: true };
+        if (poll.closed_at) return { content: [{ type: "text", text: "Cannot add slots to a closed poll" }], isError: true };
+
+        const newSlots = args.slots as { date: string; start_time?: string }[];
+        if (!newSlots?.length) return { content: [{ type: "text", text: "At least one slot required" }], isError: true };
+        if (newSlots.length > 50) return { content: [{ type: "text", text: "Max 50 slots at a time" }], isError: true };
+        if (poll.slots.length + newSlots.length > 100) return { content: [{ type: "text", text: "Max 100 total slots" }], isError: true };
+
+        const mapped = newSlots.map((s) => ({
+          date: s.date,
+          start_time: poll.poll_type === "datetime" ? (s.start_time ?? null) : null,
+        }));
+
+        await db.addSlots(dbBinding, args.poll_id as string, mapped);
+        result = await db.getPollWithSlots(dbBinding, args.poll_id as string);
         break;
       }
 

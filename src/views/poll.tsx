@@ -96,6 +96,11 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
   const chosenSlot = poll.chosen_slot;
   const hasComments = responses.some((r) => r.comment);
 
+  // Count slots the user hasn't voted on (new slots added after their response)
+  const unvotedCount = userResponse
+    ? poll.slots.filter((s) => userResponse.values[s.id] === undefined).length
+    : 0;
+
   // Compute totals
   const totals: Record<number, number> = {};
   for (const slot of poll.slots) {
@@ -310,6 +315,11 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
       {acceptingResponses && (
         <div class="respond-section">
           <h2>{userResponse ? `Your response (@${session.github_login})` : `Respond (@${session.github_login})`}</h2>
+          {unvotedCount > 0 && (
+            <div class="alert alert-info" role="status">
+              {unvotedCount} new time slot{unvotedCount !== 1 ? "s were" : " was"} added since your last response — update your selections below.
+            </div>
+          )}
           <form method="post" action={`/p/${poll.id}/respond`} id="respond-form">
             <input type="hidden" name="_csrf" value={csrfToken} />
             <input type="hidden" name="respondent_timezone" id="respondent-timezone" value={userResponse?.timezone ?? ""} />
