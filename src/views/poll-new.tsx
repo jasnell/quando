@@ -6,11 +6,12 @@ interface PollNewProps {
   session: Session;
   csrfToken: string;
   error?: string;
+  cspNonce?: string;
 }
 
-export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error }) => {
+export const PollNew: FC<PollNewProps> = ({ session, csrfToken, error, cspNonce }) => {
   return (
-    <Layout title="Create a new poll" session={session} csrfToken={csrfToken} scripts={["/poll-create.js"]}>
+    <Layout title="Create a new poll" session={session} csrfToken={csrfToken} cspNonce={cspNonce} scripts={["/poll-create.js"]}>
       <div class="page-header">
         <h1>Create a new poll</h1>
       </div>

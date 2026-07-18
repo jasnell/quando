@@ -6,11 +6,12 @@ import { Stats } from "./stats";
 interface LandingProps {
   session: Session | null;
   stats: SiteStats;
+  cspNonce?: string;
 }
 
-export const Landing: FC<LandingProps> = ({ session, stats }) => {
+export const Landing: FC<LandingProps> = ({ session, stats, cspNonce }) => {
   return (
-    <Layout session={session}>
+    <Layout session={session} cspNonce={cspNonce}>
       <div class="hero">
         <h1>Find a time that works for everyone.</h1>
         <p class="hero-sub">

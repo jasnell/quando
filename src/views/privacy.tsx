@@ -4,11 +4,12 @@ import type { Session } from "../types";
 
 interface PrivacyProps {
   session: Session | null;
+  cspNonce?: string;
 }
 
-export const Privacy: FC<PrivacyProps> = ({ session }) => {
+export const Privacy: FC<PrivacyProps> = ({ session, cspNonce }) => {
   return (
-    <Layout title="Privacy Policy" session={session}>
+    <Layout title="Privacy Policy" session={session} cspNonce={cspNonce}>
       <div class="prose">
         <h1>Privacy Policy</h1>
 

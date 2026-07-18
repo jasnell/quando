@@ -9,6 +9,7 @@ interface PollViewProps {
   poll: PollWithSlots;
   responses: ResponseWithValues[];
   userResponse: ResponseWithValues | null;
+  cspNonce?: string;
 }
 
 function generateMarkdown(poll: PollWithSlots, responses: ResponseWithValues[]): string {
@@ -73,7 +74,7 @@ const ValueIcon: FC<{ value: string }> = ({ value }) => {
   );
 };
 
-export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, responses, userResponse }) => {
+export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, responses, userResponse, cspNonce }) => {
   const isClosed = poll.closed_at !== null;
   const isExpired = isPollExpired(poll.slots, poll.timezone, poll.duration, poll.schedule_mode);
   const acceptingResponses = !isClosed && !isExpired;
@@ -100,7 +101,7 @@ export const PollView: FC<PollViewProps> = ({ session, csrfToken, poll, response
   const maxTotal = Math.max(0, ...Object.values(totals));
 
   return (
-    <Layout title={poll.title} session={session} csrfToken={csrfToken} scripts={["/poll-respond.js"]}>
+    <Layout title={poll.title} session={session} csrfToken={csrfToken} cspNonce={cspNonce} scripts={["/poll-respond.js"]}>
       <div class="poll-header">
         <h1>{poll.title}</h1>
         <p class="poll-meta">

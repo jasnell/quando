@@ -8,19 +8,23 @@ import { Landing } from "./views/landing";
 import { Privacy } from "./views/privacy";
 import { getSiteStats } from "./db/queries";
 
-type AppEnv = { Bindings: Env; Variables: { session: Session | null } };
+type AppEnv = { Bindings: Env; Variables: { session: Session | null; cspNonce: string } };
 
 const app = new Hono<AppEnv>();
 
-// Security headers
+// Security headers (generate per-request nonce for inline scripts)
 app.use("*", async (c, next) => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const nonce = btoa(String.fromCharCode(...bytes));
+  c.set("cspNonce", nonce);
   await next();
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "DENY");
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
   c.header(
     "Content-Security-Policy",
-    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://avatars.githubusercontent.com; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+    `default-src 'none'; script-src 'self' 'nonce-${nonce}'; style-src 'self'; img-src 'self' https://avatars.githubusercontent.com; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`
   );
 });
 
@@ -39,13 +43,13 @@ app.get("/", async (c) => {
     return c.redirect("/dashboard");
   }
   const stats = await getSiteStats(c.env.DB);
-  return c.html(<Landing session={session} stats={stats} />);
+  return c.html(<Landing session={session} stats={stats} cspNonce={c.get("cspNonce")} />);
 });
 
 // Privacy policy
 app.get("/privacy", (c) => {
   const session = c.get("session");
-  return c.html(<Privacy session={session} />);
+  return c.html(<Privacy session={session} cspNonce={c.get("cspNonce")} />);
 });
 
 // Mount route groups

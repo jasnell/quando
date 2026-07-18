@@ -7,7 +7,7 @@ import { PollView } from "../views/poll";
 import { PollNew } from "../views/poll-new";
 import { PollAdmin } from "../views/poll-admin";
 
-type PollEnv = { Bindings: Env; Variables: { session: Session | null; csrfToken: string } };
+type PollEnv = { Bindings: Env; Variables: { session: Session | null; csrfToken: string; cspNonce: string } };
 
 const polls = new Hono<PollEnv>();
 
@@ -16,25 +16,27 @@ const polls = new Hono<PollEnv>();
 polls.get("/new", requireAuth, (c) => {
   const session = c.get("session")!;
   const csrfToken = c.get("csrfToken");
-  return c.html(<PollNew session={session} csrfToken={csrfToken} />);
+  const cspNonce = c.get("cspNonce");
+  return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} />);
 });
 
 polls.post("/new", requireAuth, async (c) => {
   const session = c.get("session")!;
   const csrfToken = c.get("csrfToken");
+  const cspNonce = c.get("cspNonce");
   const form = await c.req.formData();
 
   // Rate limits
   const limits = await db.getCreatorLimits(c.env.DB, session.github_id);
   if (limits.activeCount >= 10) {
     return c.html(
-      <PollNew session={session} csrfToken={csrfToken} error="You have reached the limit of 10 active polls. Close or delete an existing poll first." />,
+      <PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="You have reached the limit of 10 active polls. Close or delete an existing poll first." />,
       429
     );
   }
   if (limits.recentCount >= 5) {
     return c.html(
-      <PollNew session={session} csrfToken={csrfToken} error="You can create at most 5 polls per hour. Please try again later." />,
+      <PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="You can create at most 5 polls per hour. Please try again later." />,
       429
     );
   }
@@ -49,10 +51,10 @@ polls.post("/new", requireAuth, async (c) => {
       if (url.protocol === "https:" || url.protocol === "http:") {
         link = rawLink;
       } else {
-        return c.html(<PollNew session={session} csrfToken={csrfToken} error="Link must be an http or https URL." />, 400);
+        return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="Link must be an http or https URL." />, 400);
       }
     } catch {
-      return c.html(<PollNew session={session} csrfToken={csrfToken} error="Link must be a valid URL." />, 400);
+      return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="Link must be a valid URL." />, 400);
     }
   }
   const timezone = (form.get("timezone") as string | null)?.trim() ?? "UTC";
@@ -71,13 +73,13 @@ polls.post("/new", requireAuth, async (c) => {
       duration = customVal ? parseInt(customVal, 10) : null;
     }
     if (duration !== null && (isNaN(duration) || duration < 5 || duration > 480)) {
-      return c.html(<PollNew session={session} csrfToken={csrfToken} error="Duration must be between 5 and 480 minutes." />, 400);
+      return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="Duration must be between 5 and 480 minutes." />, 400);
     }
   }
 
   // Validate title
   if (!title || title.length > 200) {
-    return c.html(<PollNew session={session} csrfToken={csrfToken} error="Title is required (max 200 characters)." />, 400);
+    return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="Title is required (max 200 characters)." />, 400);
   }
 
   // Parse slots from form data
@@ -86,11 +88,11 @@ polls.post("/new", requireAuth, async (c) => {
   const slotTimes = form.getAll("slot_time") as string[];
 
   if (slotDates.length === 0) {
-    return c.html(<PollNew session={session} csrfToken={csrfToken} error="At least one date must be selected." />, 400);
+    return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="At least one date must be selected." />, 400);
   }
 
   if (slotDates.length > 50) {
-    return c.html(<PollNew session={session} csrfToken={csrfToken} error="Maximum 50 slots allowed." />, 400);
+    return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error="Maximum 50 slots allowed." />, 400);
   }
 
   // Build slot objects
@@ -103,17 +105,17 @@ polls.post("/new", requireAuth, async (c) => {
     const validWeekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     if (scheduleMode === "weekly") {
       if (!validWeekdays.includes(date)) {
-        return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid day: ${date}`} />, 400);
+        return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error={`Invalid day: ${date}`} />, 400);
       }
     } else {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid date: ${date}`} />, 400);
+        return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error={`Invalid date: ${date}`} />, 400);
       }
     }
 
     // Validate time format (HH:MM) if present
     if (time && !/^\d{2}:\d{2}$/.test(time)) {
-      return c.html(<PollNew session={session} csrfToken={csrfToken} error={`Invalid time: ${time}`} />, 400);
+      return c.html(<PollNew session={session} csrfToken={csrfToken} cspNonce={cspNonce} error={`Invalid time: ${time}`} />, 400);
     }
 
     slots.push({ date, start_time: time || null });
@@ -147,6 +149,7 @@ polls.post("/new", requireAuth, async (c) => {
 polls.get("/p/:id", requireAuth, async (c) => {
   const session = c.get("session")!;
   const csrfToken = c.get("csrfToken");
+  const cspNonce = c.get("cspNonce");
   const pollId = c.req.param("id") as string;
 
   const poll = await db.getPollWithSlots(c.env.DB, pollId);
@@ -158,7 +161,7 @@ polls.get("/p/:id", requireAuth, async (c) => {
   const userResponse = await db.getUserResponse(c.env.DB, pollId, session.github_id);
 
   return c.html(
-    <PollView session={session} csrfToken={csrfToken} poll={poll} responses={responses} userResponse={userResponse} />
+    <PollView session={session} csrfToken={csrfToken} poll={poll} responses={responses} userResponse={userResponse} cspNonce={cspNonce} />
   );
 });
 
@@ -202,6 +205,7 @@ polls.post("/p/:id/respond", requireAuth, async (c) => {
 polls.get("/p/:id/admin", requireAuth, async (c) => {
   const session = c.get("session")!;
   const csrfToken = c.get("csrfToken");
+  const cspNonce = c.get("cspNonce");
   const pollId = c.req.param("id") as string;
 
   const poll = await db.getPollWithSlots(c.env.DB, pollId);
@@ -215,7 +219,7 @@ polls.get("/p/:id/admin", requireAuth, async (c) => {
 
   const responses = await db.getResponses(c.env.DB, pollId);
 
-  return c.html(<PollAdmin session={session} csrfToken={csrfToken} poll={poll} responses={responses} />);
+  return c.html(<PollAdmin session={session} csrfToken={csrfToken} poll={poll} responses={responses} cspNonce={cspNonce} />);
 });
 
 polls.post("/p/:id/close", requireAuth, async (c) => {

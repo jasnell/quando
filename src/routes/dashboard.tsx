@@ -4,7 +4,7 @@ import { requireAuth, clearSession } from "../auth";
 import * as db from "../db/queries";
 import { Dashboard } from "../views/dashboard";
 
-type DashEnv = { Bindings: Env; Variables: { session: Session | null; csrfToken: string } };
+type DashEnv = { Bindings: Env; Variables: { session: Session | null; csrfToken: string; cspNonce: string } };
 
 const dashboard = new Hono<DashEnv>();
 
@@ -15,7 +15,8 @@ dashboard.get("/dashboard", requireAuth, async (c) => {
     db.listPollsByCreator(c.env.DB, session.github_id),
     db.getSiteStats(c.env.DB),
   ]);
-  return c.html(<Dashboard session={session} csrfToken={csrfToken} polls={polls} stats={stats} />);
+  const cspNonce = c.get("cspNonce");
+  return c.html(<Dashboard session={session} csrfToken={csrfToken} polls={polls} stats={stats} cspNonce={cspNonce} />);
 });
 
 dashboard.get("/account/export", requireAuth, async (c) => {

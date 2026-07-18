@@ -8,11 +8,12 @@ interface DashboardProps {
   csrfToken: string;
   polls: Poll[];
   stats: SiteStats;
+  cspNonce?: string;
 }
 
-export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, stats }) => {
+export const Dashboard: FC<DashboardProps> = ({ session, csrfToken, polls, stats, cspNonce }) => {
   return (
-    <Layout title="My polls" session={session} csrfToken={csrfToken}>
+    <Layout title="My polls" session={session} csrfToken={csrfToken} cspNonce={cspNonce}>
       <div class="page-header">
         <h1>My polls</h1>
         <a href="/new" class="btn">

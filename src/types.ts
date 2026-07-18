@@ -14,7 +14,7 @@ export interface Session {
   expires_at: number;
 }
 
-export type AppContext = Context<{ Bindings: Env; Variables: { session: Session | null; csrfToken: string } }>;
+export type AppContext = Context<{ Bindings: Env; Variables: { session: Session | null; csrfToken: string; cspNonce: string } }>;
 
 export interface Poll {
   id: string;

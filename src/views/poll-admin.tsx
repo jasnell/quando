@@ -19,9 +19,10 @@ interface PollAdminProps {
   csrfToken: string;
   poll: PollWithSlots;
   responses: ResponseWithValues[];
+  cspNonce?: string;
 }
 
-export const PollAdmin: FC<PollAdminProps> = ({ session, csrfToken, poll, responses }) => {
+export const PollAdmin: FC<PollAdminProps> = ({ session, csrfToken, poll, responses, cspNonce }) => {
   const isClosed = poll.closed_at !== null;
 
   // Compute totals
@@ -39,7 +40,7 @@ export const PollAdmin: FC<PollAdminProps> = ({ session, csrfToken, poll, respon
   const maxTotal = Math.max(0, ...Object.values(totals));
 
   return (
-    <Layout title={`Manage: ${poll.title}`} session={session} csrfToken={csrfToken}>
+    <Layout title={`Manage: ${poll.title}`} session={session} csrfToken={csrfToken} cspNonce={cspNonce}>
       <div class="page-header">
         <h1>Manage poll</h1>
         <a href={`/p/${poll.id}`} class="btn btn-sm btn-outline">
