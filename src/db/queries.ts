@@ -1,5 +1,17 @@
 import type { Poll, Slot, Response, ResponseWithValues, PollWithSlots, SiteStats } from "../types";
 
+const WEEKDAY_ORDER: Record<string, number> = {
+  monday: 0, tuesday: 1, wednesday: 2, thursday: 3,
+  friday: 4, saturday: 5, sunday: 6,
+};
+
+function compareDates(a: string, b: string): number {
+  const aOrd = WEEKDAY_ORDER[a.toLowerCase()];
+  const bOrd = WEEKDAY_ORDER[b.toLowerCase()];
+  if (aOrd !== undefined && bOrd !== undefined) return aOrd - bOrd;
+  return a.localeCompare(b);
+}
+
 // --- Polls ---
 
 export async function createPoll(
@@ -46,7 +58,7 @@ export async function createPoll(
 
   // Sort slots by date then time, assign positions
   const sorted = [...slots].sort((a, b) => {
-    const dateCmp = a.date.localeCompare(b.date);
+    const dateCmp = compareDates(a.date, b.date);
     if (dateCmp !== 0) return dateCmp;
     return (a.start_time ?? "").localeCompare(b.start_time ?? "");
   });
@@ -157,7 +169,7 @@ export async function addSlots(
 
   // Sort new slots by date then time
   const sorted = [...slots].sort((a, b) => {
-    const dateCmp = a.date.localeCompare(b.date);
+    const dateCmp = compareDates(a.date, b.date);
     if (dateCmp !== 0) return dateCmp;
     return (a.start_time ?? "").localeCompare(b.start_time ?? "");
   });
